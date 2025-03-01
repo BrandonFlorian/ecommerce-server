@@ -1,6 +1,6 @@
-# Asian Bath Store E-commerce Backend
+# E-commerce Backend
 
-A production-grade e-commerce backend for selling Asian bathroom products. Built with Node.js, Express, TypeScript, Supabase, and Stripe integration.
+A production-grade e-commerce backend for selling products. Built with Node.js, Express, TypeScript, Supabase, and Stripe integration.
 
 ## Features
 
@@ -191,7 +191,3 @@ The backend can be deployed to various hosting platforms:
 - Multi-language support
 - Product variants
 - Tax calculation API integration
-
-## License
-
-This project is licensed under the MIT License.
