@@ -1,4 +1,4 @@
-import { applyFilterIf, getPaginatedData } from "@/utils/query-helper";
+import { applyFilterIf, getPaginatedData } from "../utils/query-helper";
 import { supabaseClient, getAdminClient } from "../config/supabase";
 import { AppError } from "../utils/appError";
 import { logger } from "../utils/logger";

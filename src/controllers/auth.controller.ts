@@ -20,7 +20,7 @@ export const register = async (
     // Check for validation errors
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      return next(new AppError("Validation error", 400));
+      return next(new AppError("Validation error", 400, errors.array()));
     }
 
     const userData: RegisterUserDto = {

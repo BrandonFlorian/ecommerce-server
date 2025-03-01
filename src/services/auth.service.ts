@@ -1,5 +1,5 @@
 import jwt, { SignOptions } from "jsonwebtoken";
-import { supabaseClient } from "../config/supabase";
+import { getAdminClient, supabaseClient } from "../config/supabase";
 import { AppError } from "../utils/appError";
 import { logger } from "../utils/logger";
 import type { StringValue } from "ms";
@@ -53,9 +53,9 @@ export const registerUser = async (userData: RegisterUserDto): Promise<any> => {
     if (!authData.user) {
       throw new AppError("Failed to create user", 500);
     }
-
+    const adminClient = getAdminClient();
     // Then create the user profile in our users table
-    const { data: profileData, error: profileError } = await supabaseClient
+    const { data: profileData, error: profileError } = await adminClient
       .from("users")
       .insert([
         {
