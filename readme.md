@@ -125,8 +125,8 @@ A production-grade e-commerce backend for selling products. Built with Node.js, 
 1. Clone the repository
 
    ```bash
-   git clone https://github.com/yourusername/asian-bath-store.git
-   cd asian-bath-store
+   git clone https://github.com/yourusername/e-commerce-backend.git
+   cd e-commerce-backend
    ```
 
 2. Install dependencies
@@ -170,24 +170,3 @@ A production-grade e-commerce backend for selling products. Built with Node.js, 
    ```bash
    npm run dev
    ```
-
-## Deployment Options
-
-The backend can be deployed to various hosting platforms:
-
-- **Vercel**: Great for serverless deployments with Next.js frontend
-- **Railway**: Easy setup, good for Node.js apps
-- **Render**: Similar to Railway, with a good free tier
-- **AWS/DigitalOcean**: For more control and scalability
-
-## Future Enhancements
-
-- Product reviews and ratings
-- Discount coupons and promotions
-- Wishlist functionality
-- Inventory alerts
-- Advanced analytics
-- Email notifications
-- Multi-language support
-- Product variants
-- Tax calculation API integration
