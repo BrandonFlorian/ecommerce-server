@@ -82,6 +82,49 @@ export const protect = async (
   }
 };
 
+// Optional authentication middleware
+export const optionalAuth = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    if (
+      req.headers.authorization &&
+      req.headers.authorization.startsWith("Bearer")
+    ) {
+      const token = req.headers.authorization.split(" ")[1];
+
+      try {
+        const decoded = jwt.verify(
+          token,
+          process.env.JWT_SECRET as string
+        ) as any;
+
+        // Check if the user exists
+        const { data: user, error } = await supabaseClient
+          .from("users")
+          .select("id, email, role")
+          .eq("id", decoded.id)
+          .single();
+
+        if (!error && user) {
+          // Add user info to request object
+          req.user = user;
+          req.userId = user.id;
+          req.userRole = user.role;
+        }
+      } catch (error) {
+        // Don't return error, just continue without auth
+        console.log("Token verification failed, continuing as anonymous");
+      }
+    }
+    next();
+  } catch (error) {
+    next();
+  }
+};
+
 // Middleware to restrict access to certain roles
 export const restrictTo = (...roles: string[]) => {
   return (req: Request, res: Response, next: NextFunction) => {

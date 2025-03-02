@@ -1,4 +1,4 @@
-import { supabaseClient } from "../config/supabase";
+import { getAdminClient, supabaseClient } from "../config/supabase";
 import { AppError } from "../utils/appError";
 import { logger } from "../utils/logger";
 import { v4 as uuidv4 } from "uuid";
@@ -42,8 +42,10 @@ export const getOrCreateCart = async (userId?: string, sessionId?: string) => {
       };
     }
 
+    const adminClient = getAdminClient();
+
     // Create a new cart
-    const { data: newCart, error: createError } = await supabaseClient
+    const { data: newCart, error: createError } = await adminClient
       .from("carts")
       .insert([
         {
@@ -439,9 +441,15 @@ export const getCartWithItems = async (cartId: string) => {
     let subtotal = 0;
     let totalItems = 0;
 
-    cartItems?.forEach((item, index) => {
+    cartItems?.forEach((item) => {
+      // Check the structure of products and handle accordingly
       if (item.products) {
-        subtotal += item.products[index].price * item.quantity;
+        // Check if products is an array
+        if (Array.isArray(item.products)) {
+          if (item.products.length > 0) {
+            subtotal += item.products[0].price * item.quantity;
+          }
+        }
         totalItems += item.quantity;
       }
     });
@@ -458,7 +466,9 @@ export const getCartWithItems = async (cartId: string) => {
     if (error instanceof AppError) {
       throw error;
     }
+    // Add detailed error logging
     logger.error("Unexpected error in getCartWithItems:", error);
+    console.log("Error details:", error);
     throw new AppError("Failed to retrieve cart", 500);
   }
 };

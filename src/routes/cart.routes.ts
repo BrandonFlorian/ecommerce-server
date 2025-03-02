@@ -10,7 +10,7 @@ import {
   addToCartValidator,
   updateCartItemValidator,
 } from "../utils/validators/cart.validator";
-import { protect } from "../middlewares/auth.middleware";
+import { optionalAuth } from "../middlewares/auth.middleware";
 
 const router = express.Router();
 
@@ -18,10 +18,10 @@ const router = express.Router();
 // If authenticated, cart is tied to user
 // If not, cart is tied to session cookie
 
-router.get("/", getCart);
-router.post("/items", addToCartValidator, addToCart);
-router.put("/items/:itemId", updateCartItemValidator, updateItem);
-router.delete("/items/:itemId", removeItem);
-router.delete("/", clearCartItems);
+router.get("/", optionalAuth, getCart);
+router.post("/items", optionalAuth, addToCartValidator, addToCart);
+router.put("/items/:itemId", optionalAuth, updateCartItemValidator, updateItem);
+router.delete("/items/:itemId", optionalAuth, removeItem);
+router.delete("/", optionalAuth, clearCartItems);
 
 export default router;
