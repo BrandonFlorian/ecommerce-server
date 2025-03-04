@@ -46,12 +46,19 @@ export const createPaymentIntent = async (data: CreatePaymentIntentDto) => {
     // Calculate shipping cost
     const shippingRates = await calculateShippingRates({
       address: shippingAddress,
-      items: items.map((item) => ({
-        product_id: item.products[0].id,
-        quantity: item.quantity,
-        weight: item.products[0].weight,
-        dimensions: item.products[0].dimensions,
-      })),
+      items: items.map((item) => {
+        // Check if products is an array or object
+        const product = Array.isArray(item.products)
+          ? item.products[0]
+          : item.products;
+
+        return {
+          product_id: product.id,
+          quantity: item.quantity,
+          weight: product.weight,
+          dimensions: product.dimensions,
+        };
+      }),
     });
 
     // Find selected shipping method
@@ -86,6 +93,8 @@ export const createPaymentIntent = async (data: CreatePaymentIntentDto) => {
         ...(data.metadata || {}),
       },
     });
+
+    console.log("Payment intent:", paymentIntent);
 
     return {
       clientSecret: paymentIntent.client_secret,

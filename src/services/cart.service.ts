@@ -486,18 +486,20 @@ export const getCartWithItems = async (cartId: string, sessionId?: string) => {
     let subtotal = 0;
     let totalItems = 0;
 
-    cartItems?.forEach((item) => {
-      // Check the structure of products and handle accordingly
-      if (item.products) {
-        // Check if products is an array
-        if (Array.isArray(item.products)) {
-          if (item.products.length > 0) {
-            subtotal += item.products[0].price * item.quantity;
-          }
+    if (cartItems) {
+      cartItems.forEach((item) => {
+        // Check if products is an array or object
+        const product = Array.isArray(item.products)
+          ? item.products[0]
+          : item.products;
+
+        // Check that we have valid product data
+        if (product && product.price) {
+          subtotal += product.price * item.quantity;
         }
         totalItems += item.quantity;
-      }
-    });
+      });
+    }
 
     return {
       cart,
