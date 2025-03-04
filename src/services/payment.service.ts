@@ -100,6 +100,14 @@ export const createPaymentIntent = async (data: CreatePaymentIntentDto) => {
     if (error instanceof AppError) {
       throw error;
     }
+    console.error("Full error details:", error);
+
+    // Type guard for error object
+    if (error && typeof error === "object") {
+      if ("message" in error) console.error("Error message:", error.message);
+      if ("stack" in error) console.error("Stack trace:", error.stack);
+    }
+
     logger.error("Unexpected error in createPaymentIntent:", error);
     throw new AppError("Failed to create payment intent", 500);
   }

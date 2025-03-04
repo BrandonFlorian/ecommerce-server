@@ -1,7 +1,13 @@
-import express, { Request, Response, NextFunction } from "express";
+import express, {
+  Request,
+  Response,
+  NextFunction,
+  ErrorRequestHandler,
+} from "express";
 import cors from "cors";
 import helmet from "helmet";
-
+import cookieParser from "cookie-parser";
+import csurf from "csurf";
 //routes
 import authRoutes from "./routes/auth.routes";
 import productRoutes from "./routes/product.routes";
@@ -14,6 +20,7 @@ import shippingRoutes from "./routes/shipping.routes";
 import { AppError } from "./utils/appError";
 import { requestLogger } from "./utils/logger";
 import { errorHandler } from "./middlewares/errorHandler";
+import paymentRoutes from "./routes/payment.routes";
 
 const app = express();
 
@@ -41,6 +48,31 @@ app.get("/health", (req: Request, res: Response) => {
   res.status(200).json({ status: "ok" });
 });
 
+app.use(cookieParser());
+
+if (process.env.NODE_ENV === "production") {
+  app.use(csurf({ cookie: { httpOnly: true, secure: true } }));
+
+  // Error handler for CSRF token errors
+  const csrfErrorHandler: ErrorRequestHandler = (err, req, res, next): void => {
+    if (
+      err &&
+      typeof err === "object" &&
+      "code" in err &&
+      err.code === "EBADCSRFTOKEN"
+    ) {
+      res.status(403).json({
+        status: "error",
+        message: "Invalid CSRF token",
+      });
+      return;
+    }
+    next(err);
+  };
+
+  app.use(csrfErrorHandler);
+}
+
 // API routes
 app.use("/api/auth", authRoutes);
 app.use("/api/products", productRoutes);
@@ -49,6 +81,7 @@ app.use("/api/cart", cartRoutes);
 app.use("/api/orders", orderRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/shipping", shippingRoutes);
+app.use("/api/payment", paymentRoutes);
 
 // 404 handler
 app.all("*", (req: Request, res: Response, next: NextFunction) => {

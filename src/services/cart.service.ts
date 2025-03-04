@@ -15,6 +15,7 @@ export const getOrCreateCart = async (userId?: string, sessionId?: string) => {
     if (!userId && !sessionId) {
       // Generate a new session ID if neither userId nor sessionId is provided
       sessionId = uuidv4();
+      console.log("Generated new sessionId:", sessionId);
     }
 
     // Try to find an existing cart
@@ -42,7 +43,15 @@ export const getOrCreateCart = async (userId?: string, sessionId?: string) => {
       };
     }
 
+    // Identify which client to use (admin client for inserts)
     const adminClient = getAdminClient();
+
+    console.log(
+      "Creating new cart with userId:",
+      userId,
+      "sessionId:",
+      sessionId
+    );
 
     // Create a new cart
     const { data: newCart, error: createError } = await adminClient
@@ -60,6 +69,8 @@ export const getOrCreateCart = async (userId?: string, sessionId?: string) => {
       logger.error("Error creating cart:", createError);
       throw new AppError("Failed to create cart", 500);
     }
+
+    console.log("New cart created:", newCart);
 
     return {
       cart: newCart,
@@ -191,7 +202,11 @@ export const mergeSessionCartToUserCart = async (
 };
 
 // Add an item to the cart
-export const addItemToCart = async (cartId: string, itemData: CartItemDto) => {
+export const addItemToCart = async (
+  cartId: string,
+  itemData: CartItemDto,
+  sessionId?: string
+) => {
   try {
     // Check if product exists and is active
     const { data: product, error: productError } = await supabaseClient
@@ -214,9 +229,14 @@ export const addItemToCart = async (cartId: string, itemData: CartItemDto) => {
       );
     }
 
+    // Create a client with session ID header if available
+    const client = supabaseClient.from("cart_items");
+    if (sessionId) {
+      client.headers = { "cart-session-id": sessionId };
+    }
+
     // Check if item already exists in cart
-    const { data: existingItem, error: itemError } = await supabaseClient
-      .from("cart_items")
+    const { data: existingItem, error: itemError } = await client
       .select("id, quantity")
       .eq("cart_id", cartId)
       .eq("product_id", itemData.product_id)
@@ -239,8 +259,7 @@ export const addItemToCart = async (cartId: string, itemData: CartItemDto) => {
         );
       }
 
-      const { data: updatedItem, error: updateError } = await supabaseClient
-        .from("cart_items")
+      const { data: updatedItem, error: updateError } = await client
         .update({
           quantity: newQuantity,
           updated_at: new Date().toISOString(),
@@ -257,8 +276,7 @@ export const addItemToCart = async (cartId: string, itemData: CartItemDto) => {
       return updatedItem;
     } else {
       // Add new item to cart
-      const { data: newItem, error: addError } = await supabaseClient
-        .from("cart_items")
+      const { data: newItem, error: addError } = await client
         .insert([
           {
             cart_id: cartId,
@@ -289,14 +307,23 @@ export const addItemToCart = async (cartId: string, itemData: CartItemDto) => {
 export const updateCartItem = async (
   cartId: string,
   itemId: string,
-  quantity: number
+  quantity: number,
+  sessionId?: string
 ) => {
   try {
+    // Clean the item ID to ensure no extra quotes
+    const cleanItemId = itemId.replace(/"/g, "");
+
+    // Create a client with session ID header if available
+    const client = supabaseClient.from("cart_items");
+    if (sessionId) {
+      client.headers = { "cart-session-id": sessionId };
+    }
+
     // Check if item exists in the cart
-    const { data: existingItem, error: itemError } = await supabaseClient
-      .from("cart_items")
+    const { data: existingItem, error: itemError } = await client
       .select("id, product_id")
-      .eq("id", itemId)
+      .eq("id", cleanItemId)
       .eq("cart_id", cartId)
       .single();
 
@@ -327,13 +354,12 @@ export const updateCartItem = async (
     }
 
     // Update the item quantity
-    const { data: updatedItem, error: updateError } = await supabaseClient
-      .from("cart_items")
+    const { data: updatedItem, error: updateError } = await client
       .update({
         quantity,
         updated_at: new Date().toISOString(),
       })
-      .eq("id", itemId)
+      .eq("id", cleanItemId)
       .select()
       .single();
 
@@ -353,13 +379,25 @@ export const updateCartItem = async (
 };
 
 // Remove an item from the cart
-export const removeCartItem = async (cartId: string, itemId: string) => {
+export const removeCartItem = async (
+  cartId: string,
+  itemId: string,
+  sessionId?: string
+) => {
   try {
+    console.log("Removing item from cart:", itemId);
+    // Clean the item ID to ensure no extra quotes
+    const cleanItemId = itemId.replace(/"/g, "");
+
+    // Create a client with session ID header if available
+    const client = supabaseClient.from("cart_items");
+    if (sessionId) {
+      client.headers = { "cart-session-id": sessionId };
+    }
     // Check if item exists in the cart
-    const { data: existingItem, error: itemError } = await supabaseClient
-      .from("cart_items")
+    const { data: existingItem, error: itemError } = await client
       .select("id")
-      .eq("id", itemId)
+      .eq("id", cleanItemId)
       .eq("cart_id", cartId)
       .single();
 
@@ -372,7 +410,7 @@ export const removeCartItem = async (cartId: string, itemId: string) => {
     const { error: deleteError } = await supabaseClient
       .from("cart_items")
       .delete()
-      .eq("id", itemId);
+      .eq("id", cleanItemId);
 
     if (deleteError) {
       logger.error("Error removing cart item:", deleteError);
@@ -390,11 +428,19 @@ export const removeCartItem = async (cartId: string, itemId: string) => {
 };
 
 // Get cart with items and product details
-export const getCartWithItems = async (cartId: string) => {
+export const getCartWithItems = async (cartId: string, sessionId?: string) => {
   try {
+    // Create clients with session ID header if available
+    const cartClient = supabaseClient.from("carts");
+    const itemsClient = supabaseClient.from("cart_items");
+
+    if (sessionId) {
+      cartClient.headers = { "cart-session-id": sessionId };
+      itemsClient.headers = { "cart-session-id": sessionId };
+    }
+
     // Get cart
-    const { data: cart, error: cartError } = await supabaseClient
-      .from("carts")
+    const { data: cart, error: cartError } = await cartClient
       .select("id, user_id, session_id, created_at, updated_at")
       .eq("id", cartId)
       .single();
@@ -405,8 +451,7 @@ export const getCartWithItems = async (cartId: string) => {
     }
 
     // Get cart items with product details
-    const { data: cartItems, error: itemsError } = await supabaseClient
-      .from("cart_items")
+    const { data: cartItems, error: itemsError } = await itemsClient
       .select(
         `
         id, 

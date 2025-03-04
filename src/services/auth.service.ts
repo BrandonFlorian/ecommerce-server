@@ -3,6 +3,7 @@ import { getAdminClient, supabaseClient } from "../config/supabase";
 import { AppError } from "../utils/appError";
 import { logger } from "../utils/logger";
 import type { StringValue } from "ms";
+import { Response } from "express";
 // Interface for user registration data
 export interface RegisterUserDto {
   email: string;
@@ -93,7 +94,10 @@ export const registerUser = async (userData: RegisterUserDto): Promise<any> => {
 };
 
 // Login a user
-export const loginUser = async (loginData: LoginUserDto): Promise<any> => {
+export const loginUser = async (
+  loginData: LoginUserDto,
+  res?: Response
+): Promise<any> => {
   try {
     // Sign in with Supabase Auth
     const { data: authData, error: authError } =
@@ -123,9 +127,22 @@ export const loginUser = async (loginData: LoginUserDto): Promise<any> => {
       throw new AppError("User profile not found", 404);
     }
 
+    // Generate JWT token
+    const token = generateToken(profileData.id);
+
+    // If response object is provided, set the token as an HTTP-only cookie
+    if (res) {
+      res.cookie("authToken", token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+        sameSite: "lax",
+      });
+    }
+
     return {
       user: profileData,
-      token: generateToken(profileData.id),
+      token: token,
     };
   } catch (error) {
     if (error instanceof AppError) {

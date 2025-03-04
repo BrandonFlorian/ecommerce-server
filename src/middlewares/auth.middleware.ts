@@ -32,6 +32,11 @@ export const protect = async (
       token = req.headers.authorization.split(" ")[1];
     }
 
+    // Also check for token in cookies (for browser clients)
+    else if (req.cookies && req.cookies.authToken) {
+      token = req.cookies.authToken;
+    }
+
     // Check if token exists
     if (!token) {
       return next(
@@ -89,12 +94,21 @@ export const optionalAuth = async (
   next: NextFunction
 ) => {
   try {
+    let token: string | undefined;
+
+    // Get token from Authorization header
     if (
       req.headers.authorization &&
       req.headers.authorization.startsWith("Bearer")
     ) {
-      const token = req.headers.authorization.split(" ")[1];
+      token = req.headers.authorization.split(" ")[1];
+    }
+    // Also check for token in cookies
+    else if (req.cookies && req.cookies.authToken) {
+      token = req.cookies.authToken;
+    }
 
+    if (token) {
       try {
         const decoded = jwt.verify(
           token,

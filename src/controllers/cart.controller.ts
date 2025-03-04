@@ -89,10 +89,14 @@ export const addToCart = async (
       quantity: req.body.quantity,
     };
 
-    await addItemToCart(cart.id, itemData);
+    // Pass the session ID to the service function
+    await addItemToCart(cart.id, itemData, newSessionId || sessionId);
 
     // Get updated cart with items
-    const updatedCart = await getCartWithItems(cart.id);
+    const updatedCart = await getCartWithItems(
+      cart.id,
+      newSessionId || sessionId
+    );
 
     res.status(200).json({
       status: "success",
@@ -145,6 +149,8 @@ export const removeItem = async (
   next: NextFunction
 ) => {
   try {
+    console.log("Removing item from cart:", req.params.itemId);
+
     // Get cart ID from session or user
     const userId = req.userId;
     const sessionId = req.cookies?.cartSessionId || req.body.sessionId;
@@ -153,10 +159,10 @@ export const removeItem = async (
     const { cart } = await getOrCreateCart(userId, sessionId);
 
     // Remove cart item
-    await removeCartItem(cart.id, req.params.itemId);
+    await removeCartItem(cart.id, req.params.itemId, sessionId);
 
     // Get updated cart with items
-    const updatedCart = await getCartWithItems(cart.id);
+    const updatedCart = await getCartWithItems(cart.id, sessionId);
 
     res.status(200).json({
       status: "success",
