@@ -224,8 +224,17 @@ export type Database = {
           billing_address_id: string
           created_at: string | null
           discount_amount: number
+          dispute_created_at: string | null
+          dispute_evidence: Json | null
+          dispute_reason: string | null
+          dispute_resolved_at: string | null
+          dispute_status: string | null
+          fraud_warning: boolean | null
+          fraud_warning_details: Json | null
           id: string
           notes: string | null
+          payment_method_details: Json | null
+          receipt_url: string | null
           shipping_address_id: string
           shipping_cost: number
           shipping_method: string
@@ -242,8 +251,17 @@ export type Database = {
           billing_address_id: string
           created_at?: string | null
           discount_amount?: number
+          dispute_created_at?: string | null
+          dispute_evidence?: Json | null
+          dispute_reason?: string | null
+          dispute_resolved_at?: string | null
+          dispute_status?: string | null
+          fraud_warning?: boolean | null
+          fraud_warning_details?: Json | null
           id?: string
           notes?: string | null
+          payment_method_details?: Json | null
+          receipt_url?: string | null
           shipping_address_id: string
           shipping_cost: number
           shipping_method: string
@@ -260,8 +278,17 @@ export type Database = {
           billing_address_id?: string
           created_at?: string | null
           discount_amount?: number
+          dispute_created_at?: string | null
+          dispute_evidence?: Json | null
+          dispute_reason?: string | null
+          dispute_resolved_at?: string | null
+          dispute_status?: string | null
+          fraud_warning?: boolean | null
+          fraud_warning_details?: Json | null
           id?: string
           notes?: string | null
+          payment_method_details?: Json | null
+          receipt_url?: string | null
           shipping_address_id?: string
           shipping_cost?: number
           shipping_method?: string

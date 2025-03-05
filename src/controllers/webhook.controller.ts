@@ -33,7 +33,7 @@ export const handleStripeWebhookRequest = (
     logger.info(`Webhook received: ${event.type}`);
 
     // Process the event asynchronously but don't await it
-    // This allows us to return a 200 response quickly
+    // This way we can return a 200 response quickly
     handleStripeWebhook(event)
       .then(() => {
         logger.info(`Webhook processed successfully: ${event.type}`);
