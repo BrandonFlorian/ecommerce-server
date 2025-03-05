@@ -236,12 +236,26 @@ export const createOrderFromPaymentIntent = async (paymentIntent: any) => {
     // Calculate shipping cost (use the saved shipping method from metadata)
     const shippingRates = await calculateShippingRates({
       address: shippingAddress,
-      items: items.map((item, index) => ({
-        product_id: item.products[index].id,
-        quantity: item.quantity,
-        weight: item.products[index].weight,
-        dimensions: item.products[index].dimensions,
-      })),
+      items: items.map((item) => {
+        // Ensure product is retrieved correctly whether it's an object or first element of array
+        const product = Array.isArray(item.products)
+          ? item.products[0]
+          : item.products;
+
+        // Ensure dimensions has the expected structure
+        const dimensions = product.dimensions as {
+          length: number;
+          width: number;
+          height: number;
+        };
+
+        return {
+          product_id: product.id,
+          quantity: item.quantity,
+          weight: product.weight,
+          dimensions: dimensions,
+        };
+      }),
     });
 
     const selectedShipping = shippingRates.find(
@@ -287,13 +301,20 @@ export const createOrderFromPaymentIntent = async (paymentIntent: any) => {
     }
 
     // Add order items
-    const orderItems = items.map((item, index) => ({
-      order_id: order.id,
-      product_id: item.products[index].id,
-      quantity: item.quantity,
-      unit_price: item.products[index].price,
-      total_price: item.products[index].price * item.quantity,
-    }));
+    const orderItems = items.map((item) => {
+      // Ensure product is retrieved correctly whether it's an object or first element of array
+      const product = Array.isArray(item.products)
+        ? item.products[0]
+        : item.products;
+
+      return {
+        order_id: order.id,
+        product_id: product.id,
+        quantity: item.quantity,
+        unit_price: product.price,
+        total_price: product.price * item.quantity,
+      };
+    });
 
     const { error: itemsError } = await adminClient
       .from("order_items")
@@ -307,7 +328,9 @@ export const createOrderFromPaymentIntent = async (paymentIntent: any) => {
     // Update product inventory
     for (const item of items) {
       // Get the product from the array - assuming it's the first item
-      const product = item.products[0];
+      const product = Array.isArray(item.products)
+        ? item.products[0]
+        : item.products;
 
       const { error: inventoryError } = await adminClient
         .from("products")

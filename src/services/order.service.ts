@@ -281,16 +281,16 @@ export const updateOrderStatus = async (
         .from("orders")
         .select(
           `
-          id,
-          shipping_method,
-          shipping_addresses:shipping_address_id (*),
-          order_items (
             id,
-            product_id,
-            quantity,
-            products:product_id (id, weight, dimensions)
-          )
-        `
+            shipping_method,
+            shipping_address_id,
+            order_items (
+              id,
+              product_id,
+              quantity,
+              products:product_id (id, weight, dimensions)
+            )
+          `
         )
         .eq("id", orderId)
         .single();
@@ -303,6 +303,21 @@ export const updateOrderStatus = async (
         throw new AppError("Failed to fetch order details", 500);
       }
 
+      // Now fetch the shipping address separately
+      const { data: shippingAddress, error: addressError } = await adminClient
+        .from("addresses")
+        .select("*")
+        .eq("id", fullOrder.shipping_address_id)
+        .single();
+
+      if (addressError || !shippingAddress) {
+        logger.error(
+          `Error fetching shipping address for ${orderId}:`,
+          addressError
+        );
+        throw new AppError("Failed to fetch shipping address", 500);
+      }
+
       // Prepare data for label generation
       const fromAddress = {
         address_line1: "123 Warehouse St",
@@ -313,22 +328,28 @@ export const updateOrderStatus = async (
         country: "US",
       };
 
-      const items = fullOrder.order_items.map((item) => ({
-        product_id: item.product_id,
-        quantity: item.quantity,
-        weight: item.products[0].weight,
-        dimensions: item.products[0].dimensions,
-      }));
+      // Prepare items for shipping
+      const items = fullOrder.order_items.map((item) => {
+        // Handle potential array or object structure for products
+        const product = Array.isArray(item.products)
+          ? item.products[0]
+          : item.products;
 
-      // Generate shipping label
+        return {
+          product_id: item.product_id,
+          quantity: item.quantity,
+          weight: product.weight,
+          dimensions: product.dimensions,
+        };
+      });
+
       const { trackingNumber: newTrackingNumber } = await generateShippingLabel(
         orderId,
         fullOrder.shipping_method,
         fromAddress,
-        fullOrder.shipping_addresses[0], //fix me
+        shippingAddress,
         items
       );
-
       trackingNumber = newTrackingNumber;
     }
 

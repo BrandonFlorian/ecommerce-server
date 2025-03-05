@@ -21,6 +21,7 @@ import { AppError } from "./utils/appError";
 import { requestLogger } from "./utils/logger";
 import { errorHandler } from "./middlewares/errorHandler";
 import paymentRoutes from "./routes/payment.routes";
+import { handleStripeWebhookRequest } from "./controllers/webhook.controller";
 
 const app = express();
 
@@ -35,6 +36,12 @@ const corsOptions = {
   credentials: true,
 };
 app.use(cors(corsOptions));
+
+app.post(
+  "/api/payment/webhook",
+  express.raw({ type: "application/json" }),
+  handleStripeWebhookRequest
+);
 
 // Body parsing middleware
 app.use(express.json({ limit: "10kb" }));

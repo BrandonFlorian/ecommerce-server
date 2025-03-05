@@ -73,12 +73,23 @@ export const getShippingRates = async (
         postal_code: address.postal_code,
         country: address.country,
       },
-      items: cartItems.map((item) => ({
-        product_id: item.products[0].id,
-        quantity: item.quantity,
-        weight: item.products[0].weight,
-        dimensions: item.products[0].dimensions,
-      })),
+      items: cartItems.map((item) => {
+        // Use this pattern for accessing the product
+        const product = Array.isArray(item.products)
+          ? item.products[0]
+          : item.products;
+
+        return {
+          product_id: product.id,
+          quantity: item.quantity,
+          weight: product.weight,
+          dimensions: product.dimensions as {
+            length: number;
+            width: number;
+            height: number;
+          },
+        };
+      }),
     };
 
     // Calculate shipping rates

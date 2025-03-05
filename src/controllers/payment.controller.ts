@@ -72,25 +72,32 @@ export const stripeWebhook = async (
     const signature = req.headers["stripe-signature"] as string;
 
     if (!signature) {
-      return next(new AppError("Stripe signature missing", 400));
+      console.log("No signature found");
+      return res.status(400).json({ error: "Stripe signature missing" });
     }
 
     let event;
 
     try {
+      // req.body is now a Buffer
       event = stripe.webhooks.constructEvent(
         req.body,
         signature,
         process.env.STRIPE_WEBHOOK_SECRET as string
       );
     } catch (err: any) {
-      return next(new AppError(`Webhook Error: ${err.message}`, 400));
+      console.log("Webhook signature verification failed:", err.message);
+      return res.status(400).json({ error: err.message });
     }
+
+    console.log("Webhook verified successfully:", event.type);
 
     const result = await handleStripeWebhook(event);
 
     res.status(200).json(result);
   } catch (error) {
-    next(error);
+    console.error("Webhook error:", error);
+    // Always respond with a 200 to Stripe
+    res.status(200).json({ received: true, error: true });
   }
 };

@@ -10,11 +10,11 @@ import { protect } from "../middlewares/auth.middleware";
 const router = express.Router();
 
 // Public route for Stripe webhook
-router.post(
-  "/webhook",
-  express.raw({ type: "application/json" }),
-  stripeWebhook
-);
+// router.post(
+//   "/webhook",
+//   express.raw({ type: "application/json" }),
+//   stripeWebhook
+// );
 
 // Protected routes
 router.use(protect);

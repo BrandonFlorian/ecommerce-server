@@ -1,7 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 
 import { logger } from "../utils/logger";
-import { Database } from "@/types/supabase";
+import { Database } from "@/types/database.types";
 
 // Ensure required environment variables are set
 if (!process.env.SUPABASE_URL || !process.env.SUPABASE_ANON_KEY) {
