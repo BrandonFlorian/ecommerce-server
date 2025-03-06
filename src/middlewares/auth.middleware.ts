@@ -44,21 +44,31 @@ export const protect = async (
       );
     }
 
-    // Verify token
     try {
-      const decoded = jwt.verify(
-        token,
-        process.env.JWT_SECRET as string
-      ) as any;
+      // For Supabase tokens, we'll use the Supabase client to get the user
+      const {
+        data: { user },
+        error: supabaseError,
+      } = await supabaseClient.auth.getUser(token);
 
-      // Check if the user still exists
-      const { data: user, error } = await supabaseClient
+      if (supabaseError || !user) {
+        logger.error("Error verifying Supabase token:", supabaseError);
+        return next(
+          new AppError(
+            "Invalid token or token has expired. Please log in again.",
+            401
+          )
+        );
+      }
+
+      // Check if the user still exists in our custom users table
+      const { data: userData, error: userError } = await supabaseClient
         .from("users")
         .select("id, email, role")
-        .eq("id", decoded.id)
+        .eq("id", user.id)
         .single();
 
-      if (error || !user) {
+      if (userError || !userData) {
         return next(
           new AppError(
             "The user belonging to this token no longer exists.",
@@ -68,9 +78,9 @@ export const protect = async (
       }
 
       // Add user info to request object
-      req.user = user;
-      req.userId = user.id;
-      req.userRole = user.role;
+      req.user = userData;
+      req.userId = userData.id;
+      req.userRole = userData.role;
 
       next();
     } catch (error) {
@@ -110,23 +120,26 @@ export const optionalAuth = async (
 
     if (token) {
       try {
-        const decoded = jwt.verify(
-          token,
-          process.env.JWT_SECRET as string
-        ) as any;
+        // For Supabase tokens, we'll use the Supabase client to get the user
+        const {
+          data: { user },
+          error: supabaseError,
+        } = await supabaseClient.auth.getUser(token);
 
-        // Check if the user exists
-        const { data: user, error } = await supabaseClient
-          .from("users")
-          .select("id, email, role")
-          .eq("id", decoded.id)
-          .single();
+        if (!supabaseError && user) {
+          // Check if the user exists in our custom users table
+          const { data: userData, error: userError } = await supabaseClient
+            .from("users")
+            .select("id, email, role")
+            .eq("id", user.id)
+            .single();
 
-        if (!error && user) {
-          // Add user info to request object
-          req.user = user;
-          req.userId = user.id;
-          req.userRole = user.role;
+          if (!userError && userData) {
+            // Add user info to request object
+            req.user = userData;
+            req.userId = userData.id;
+            req.userRole = userData.role;
+          }
         }
       } catch (error) {
         // Don't return error, just continue without auth
@@ -135,6 +148,7 @@ export const optionalAuth = async (
     }
     next();
   } catch (error) {
+    // Don't fail the request, just proceed without auth
     next();
   }
 };

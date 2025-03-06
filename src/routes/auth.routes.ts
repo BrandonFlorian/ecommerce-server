@@ -5,6 +5,8 @@ import {
   forgotPasswordController,
   resetPasswordController,
   getCurrentUser,
+  refreshTokenController,
+  logout,
 } from "../controllers/auth.controller";
 import {
   registerValidator,
@@ -25,6 +27,10 @@ router.post(
   forgotPasswordController
 );
 router.post("/reset-password", resetPasswordValidator, resetPasswordController);
+
+router.post("/refresh-token", refreshTokenController);
+
+router.post("/logout", logout);
 
 // Protected routes
 router.get("/me", protect, getCurrentUser);

@@ -7,6 +7,8 @@ import {
   resetPassword,
   RegisterUserDto,
   LoginUserDto,
+  refreshTokens,
+  logoutUser,
 } from "../services/auth.service";
 import { AppError } from "../utils/appError";
 
@@ -32,6 +34,22 @@ export const register = async (
     };
 
     const result = await registerUser(userData);
+
+    // Set tokens as cookies
+    res.cookie("authToken", result.token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      maxAge: result.expires_in * 1000,
+      sameSite: "lax",
+    });
+
+    res.cookie("refreshToken", result.refresh_token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
+      sameSite: "lax",
+      path: "/api/auth",
+    });
 
     res.status(201).json({
       status: "success",
@@ -69,7 +87,7 @@ export const login = async (
       password: req.body.password,
     };
 
-    const result = await loginUser(loginData);
+    const result = await loginUser(loginData, res); // Pass res to set cookies
 
     res.status(200).json({
       status: "success",
@@ -152,6 +170,72 @@ export const getCurrentUser = async (
       data: {
         user: req.user,
       },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const refreshTokenController = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    // Get refresh token from cookie
+    const refreshToken = req.cookies.refreshToken || req.body.refresh_token;
+
+    if (!refreshToken) {
+      return next(new AppError("Refresh token is required", 401));
+    }
+
+    const result = await refreshTokens(refreshToken);
+
+    // Set new tokens as cookies
+    res.cookie("authToken", result.access_token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      maxAge: result.expires_in * 1000,
+      sameSite: "lax",
+    });
+
+    res.cookie("refreshToken", result.refresh_token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
+      sameSite: "lax",
+      path: "/api/auth",
+    });
+
+    res.status(200).json({
+      status: "success",
+      data: {
+        token: result.access_token,
+      },
+    });
+  } catch (error) {
+    // Clear the invalid cookies on error
+    res.clearCookie("authToken");
+    res.clearCookie("refreshToken", { path: "/api/auth" });
+    next(error);
+  }
+};
+
+export const logout = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    await logoutUser();
+
+    // Clear cookies
+    res.clearCookie("authToken");
+    res.clearCookie("refreshToken", { path: "/api/auth" });
+
+    res.status(200).json({
+      status: "success",
+      message: "Logged out successfully",
     });
   } catch (error) {
     next(error);

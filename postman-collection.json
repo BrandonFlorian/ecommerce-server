@@ -53,6 +53,9 @@
                   "var jsonData = pm.response.json();",
                   "if (jsonData.data && jsonData.data.token) {",
                   "    pm.environment.set(\"token\", jsonData.data.token);",
+                  "    // Store the cookie for later use",
+                  "    const cookieJar = pm.cookies.jar();",
+                  "    cookieJar.set(pm.request.url, 'authToken', jsonData.data.token);",
                   "}"
                 ],
                 "type": "text/javascript"
@@ -81,6 +84,61 @@
           "response": []
         },
         {
+          "name": "Refresh Token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "if (jsonData.data && jsonData.data.token) {",
+                  "    pm.environment.set(\"token\", jsonData.data.token);",
+                  "    // Store the cookie for later use - same as in login script",
+                  "    const cookieJar = pm.cookies.jar();",
+                  "    cookieJar.set(pm.request.url.toString(), 'authToken', jsonData.data.token);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/auth/refresh-token",
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth", "refresh-token"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/auth/logout",
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth", "logout"]
+            }
+          },
+          "response": []
+        },
+        {
           "name": "Forgot Password",
           "request": {
             "method": "POST",
@@ -99,6 +157,29 @@
               "raw": "{{base_url}}/api/auth/forgot-password",
               "host": ["{{base_url}}"],
               "path": ["api", "auth", "forgot-password"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Reset Password",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"your-password-reset-token\",\n  \"password\": \"NewPassword123\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/auth/reset-password",
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth", "reset-password"]
             }
           },
           "response": []
@@ -984,6 +1065,208 @@
           "response": []
         }
       ]
+    },
+    {
+      "name": "Webhook Testing",
+      "item": [
+        {
+          "name": "Simulate Payment Success",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "stripe-signature",
+                "value": "test_signature",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"evt_test_webhook\",\n  \"object\": \"event\",\n  \"type\": \"payment_intent.succeeded\",\n  \"data\": {\n    \"object\": {\n      \"id\": \"pi_test123\",\n      \"amount\": 1999,\n      \"metadata\": {\n        \"cart_id\": \"cart-id-here\",\n        \"shipping_address_id\": \"address-id-here\",\n        \"billing_address_id\": \"address-id-here\",\n        \"shipping_method\": \"standard\",\n        \"user_id\": \"user-id-here\"\n      }\n    }\n  }\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/payment/webhook",
+              "host": ["{{base_url}}"],
+              "path": ["api", "payment", "webhook"]
+            },
+            "description": "Note: This is for testing only. In a real environment, the Stripe CLI or Stripe's webhook simulation should be used."
+          },
+          "response": []
+        },
+        {
+          "name": "Simulate Charge Success",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "stripe-signature",
+                "value": "test_signature",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"evt_test_webhook\",\n  \"object\": \"event\",\n  \"type\": \"charge.succeeded\",\n  \"data\": {\n    \"object\": {\n      \"id\": \"ch_test123\",\n      \"payment_intent\": \"pi_test123\",\n      \"receipt_url\": \"https://pay.stripe.com/receipts/test_receipt\",\n      \"payment_method_details\": {\n        \"card\": {\n          \"brand\": \"visa\",\n          \"last4\": \"4242\",\n          \"exp_month\": 12,\n          \"exp_year\": 2024\n        },\n        \"type\": \"card\"\n      }\n    }\n  }\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/payment/webhook",
+              "host": ["{{base_url}}"],
+              "path": ["api", "payment", "webhook"]
+            },
+            "description": "Note: This is for testing only. In a real environment, the Stripe CLI or Stripe's webhook simulation should be used."
+          },
+          "response": []
+        },
+        {
+          "name": "Simulate Payment Failed",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "stripe-signature",
+                "value": "test_signature",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"evt_test_webhook\",\n  \"object\": \"event\",\n  \"type\": \"payment_intent.payment_failed\",\n  \"data\": {\n    \"object\": {\n      \"id\": \"pi_test456\",\n      \"last_payment_error\": {\n        \"message\": \"Your card was declined.\",\n        \"code\": \"card_declined\"\n      }\n    }\n  }\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/payment/webhook",
+              "host": ["{{base_url}}"],
+              "path": ["api", "payment", "webhook"]
+            },
+            "description": "Note: This is for testing only. In a real environment, the Stripe CLI or Stripe's webhook simulation should be used."
+          },
+          "response": []
+        },
+        {
+          "name": "Simulate Refund",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "stripe-signature",
+                "value": "test_signature",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"evt_test_webhook\",\n  \"object\": \"event\",\n  \"type\": \"charge.refunded\",\n  \"data\": {\n    \"object\": {\n      \"id\": \"ch_test123\",\n      \"payment_intent\": \"pi_test123\",\n      \"amount\": 1999,\n      \"amount_refunded\": 1999,\n      \"refunded\": true\n    }\n  }\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/payment/webhook",
+              "host": ["{{base_url}}"],
+              "path": ["api", "payment", "webhook"]
+            },
+            "description": "Note: This is for testing only. In a real environment, the Stripe CLI or Stripe's webhook simulation should be used."
+          },
+          "response": []
+        },
+        {
+          "name": "Simulate Dispute Created",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "stripe-signature",
+                "value": "test_signature",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"evt_test_webhook\",\n  \"object\": \"event\",\n  \"type\": \"charge.dispute.created\",\n  \"data\": {\n    \"object\": {\n      \"id\": \"dp_test123\",\n      \"charge\": \"ch_test123\",\n      \"status\": \"needs_response\",\n      \"reason\": \"product_not_received\",\n      \"created\": 1646237352,\n      \"evidence\": {}\n    }\n  }\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/payment/webhook",
+              "host": ["{{base_url}}"],
+              "path": ["api", "payment", "webhook"]
+            },
+            "description": "Note: This is for testing only. In a real environment, the Stripe CLI or Stripe's webhook simulation should be used."
+          },
+          "response": []
+        },
+        {
+          "name": "Simulate Fraud Warning",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "stripe-signature",
+                "value": "test_signature",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"evt_test_webhook\",\n  \"object\": \"event\",\n  \"type\": \"radar.early_fraud_warning.created\",\n  \"data\": {\n    \"object\": {\n      \"id\": \"issfr_test123\",\n      \"charge\": \"ch_test123\",\n      \"fraud_type\": \"card_never_received\",\n      \"actionable\": true,\n      \"created\": 1646237352\n    }\n  }\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/payment/webhook",
+              "host": ["{{base_url}}"],
+              "path": ["api", "payment", "webhook"]
+            },
+            "description": "Note: This is for testing only. In a real environment, the Stripe CLI or Stripe's webhook simulation should be used."
+          },
+          "response": []
+        }
+      ]
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [""]
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "exec": [""]
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:3001",
+      "type": "string"
     }
   ]
 }
