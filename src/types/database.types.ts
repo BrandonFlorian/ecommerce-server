@@ -57,7 +57,7 @@ export type Database = {
             foreignKeyName: "addresses_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
-            referencedRelation: "users"
+            referencedRelation: "user_profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -131,7 +131,7 @@ export type Database = {
             foreignKeyName: "carts_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
-            referencedRelation: "users"
+            referencedRelation: "user_profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -320,7 +320,7 @@ export type Database = {
             foreignKeyName: "orders_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
-            referencedRelation: "users"
+            referencedRelation: "user_profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -425,7 +425,7 @@ export type Database = {
           },
         ]
       }
-      users: {
+      user_profiles: {
         Row: {
           created_at: string | null
           email: string

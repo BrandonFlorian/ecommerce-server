@@ -23,7 +23,13 @@ export const getProfile = async (
   try {
     const userId = req.userId!;
 
-    const user = await getUserProfile(userId);
+    // Extract the JWT from the request (without 'Bearer ' prefix)
+    let jwt: string | undefined;
+    if (req.headers.authorization?.startsWith("Bearer ")) {
+      jwt = req.headers.authorization.substring(7);
+    }
+
+    const user = await getUserProfile(userId, jwt);
 
     res.status(200).json({
       status: "success",

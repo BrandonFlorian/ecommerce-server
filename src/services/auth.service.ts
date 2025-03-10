@@ -58,7 +58,7 @@ export const registerUser = async (userData: RegisterUserDto): Promise<any> => {
     const adminClient = getAdminClient();
     // Then create the user profile in our users table
     const { data: profileData, error: profileError } = await adminClient
-      .from("users")
+      .from("user_profiles")
       .insert([
         {
           id: authData.user.id,
@@ -120,7 +120,7 @@ export const loginUser = async (
 
     // Get the user profile from our users table
     const { data: profileData, error: profileError } = await supabaseClient
-      .from("users")
+      .from("user_profiles")
       .select("id, email, first_name, last_name, phone, role")
       .eq("id", authData.user.id)
       .single();
@@ -232,7 +232,7 @@ export const refreshTokens = async (refreshToken: string): Promise<any> => {
 
     // Get the user profile from our users table
     const { data: profileData, error: profileError } = await supabaseClient
-      .from("users")
+      .from("user_profiles")
       .select("id, email, first_name, last_name, phone, role")
       .eq("id", data.user.id)
       .single();

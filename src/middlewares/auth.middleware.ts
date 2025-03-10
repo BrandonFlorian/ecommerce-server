@@ -1,7 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
 import { AppError } from "../utils/appError";
-import { supabaseClient } from "../config/supabase";
 import { logger } from "../utils/logger";
 
 // Extend the Express Request interface to include user information
@@ -30,10 +29,8 @@ export const protect = async (
       req.headers.authorization.startsWith("Bearer")
     ) {
       token = req.headers.authorization.split(" ")[1];
-    }
-
-    // Also check for token in cookies (for browser clients)
-    else if (req.cookies && req.cookies.authToken) {
+      console.log("Extracted token:", token);
+    } else if (req.cookies && req.cookies.authToken) {
       token = req.cookies.authToken;
     }
 
@@ -45,14 +42,11 @@ export const protect = async (
     }
 
     try {
-      // For Supabase tokens, we'll use the Supabase client to get the user
-      const {
-        data: { user },
-        error: supabaseError,
-      } = await supabaseClient.auth.getUser(token);
+      // Validate the token
+      const payload = jwt.verify(token, process.env.JWT_SECRET!);
+      console.log("Payload:", payload);
 
-      if (supabaseError || !user) {
-        logger.error("Error verifying Supabase token:", supabaseError);
+      if (!payload) {
         return next(
           new AppError(
             "Invalid token or token has expired. Please log in again.",
@@ -61,35 +55,18 @@ export const protect = async (
         );
       }
 
-      // Check if the user still exists in our custom users table
-      const { data: userData, error: userError } = await supabaseClient
-        .from("users")
-        .select("id, email, role")
-        .eq("id", user.id)
-        .single();
-
-      if (userError || !userData) {
-        return next(
-          new AppError(
-            "The user belonging to this token no longer exists.",
-            401
-          )
-        );
-      }
+      // Create a client with the user's token
+      console.log("verify token locally User:", payload);
 
       // Add user info to request object
-      req.user = userData;
-      req.userId = userData.id;
-      req.userRole = userData.role;
+      req.user = payload;
+      req.userId = payload.sub as string;
+      //req.userRole = user.role;
 
       next();
     } catch (error) {
-      return next(
-        new AppError(
-          "Invalid token or token has expired. Please log in again.",
-          401
-        )
-      );
+      console.log("Error in auth middleware:", error);
+      return next(new AppError("Authentication failed", 401));
     }
   } catch (error) {
     logger.error("Error in auth middleware:", error);
@@ -120,32 +97,28 @@ export const optionalAuth = async (
 
     if (token) {
       try {
-        // For Supabase tokens, we'll use the Supabase client to get the user
-        const {
-          data: { user },
-          error: supabaseError,
-        } = await supabaseClient.auth.getUser(token);
+        // verify token locally
+        const payload = jwt.verify(token, process.env.JWT_SECRET!);
+        console.log("Payload:", payload);
 
-        if (!supabaseError && user) {
-          // Check if the user exists in our custom users table
-          const { data: userData, error: userError } = await supabaseClient
-            .from("users")
-            .select("id, email, role")
-            .eq("id", user.id)
-            .single();
-
-          if (!userError && userData) {
-            // Add user info to request object
-            req.user = userData;
-            req.userId = userData.id;
-            req.userRole = userData.role;
-          }
+        if (!payload) {
+          return next(
+            new AppError(
+              "Invalid token or token has expired. Please log in again.",
+              401
+            )
+          );
         }
+
+        // Add user info to request object
+        req.user = payload;
+        req.userId = payload.sub as string;
       } catch (error) {
         // Don't return error, just continue without auth
         console.log("Token verification failed, continuing as anonymous");
       }
     }
+
     next();
   } catch (error) {
     // Don't fail the request, just proceed without auth

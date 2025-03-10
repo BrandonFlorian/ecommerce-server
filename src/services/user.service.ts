@@ -1,5 +1,9 @@
 import { getPaginatedData } from "@/utils/query-helper";
-import { supabaseClient, getAdminClient } from "../config/supabase";
+import {
+  supabaseClient,
+  getAdminClient,
+  createUserClient,
+} from "../config/supabase";
 import { AppError } from "../utils/appError";
 import { logger } from "../utils/logger";
 
@@ -23,10 +27,19 @@ export interface AddressDto {
 }
 
 // Get user profile
-export const getUserProfile = async (userId: string) => {
+export const getUserProfile = async (userId: string, jwt?: string) => {
   try {
-    const { data: user, error } = await supabaseClient
-      .from("users")
+    // Determine which client to use
+    let client;
+    if (jwt) {
+      // If JWT is provided, create a client with the user's token
+      client = createUserClient(jwt);
+    } else {
+      // Fall back to normal client if no JWT is provided
+      client = supabaseClient;
+    }
+    const { data: user, error } = await client
+      .from("user_profiles")
       .select("id, email, first_name, last_name, phone, role, created_at")
       .eq("id", userId)
       .single();
@@ -53,7 +66,7 @@ export const updateUserProfile = async (
 ) => {
   try {
     const { data: user, error } = await supabaseClient
-      .from("users")
+      .from("user_profiles")
       .update({
         first_name: profileData.first_name,
         last_name: profileData.last_name,
@@ -373,7 +386,7 @@ export const getUserDetails = async (userId: string) => {
 
     // Get user details
     const { data: user, error } = await adminClient
-      .from("users")
+      .from("user_profiles")
       .select(
         `
         id, 
