@@ -51,13 +51,14 @@ export const registerUser = async (userData: RegisterUserDto): Promise<any> => {
       throw new AppError(authError.message, 400);
     }
 
-    if (!authData.user) {
+    if (!authData.user || !authData.session) {
       throw new AppError("Failed to create user", 500);
     }
+
     const adminClient = getAdminClient();
     // Then create the user profile in our users table
     const { data: profileData, error: profileError } = await adminClient
-      .from("users")
+      .from("user_profiles")
       .insert([
         {
           id: authData.user.id,
@@ -82,7 +83,9 @@ export const registerUser = async (userData: RegisterUserDto): Promise<any> => {
 
     return {
       user: profileData,
-      token: generateToken(profileData.id),
+      token: authData.session.access_token,
+      refresh_token: authData.session.refresh_token,
+      expires_in: authData.session.expires_in,
     };
   } catch (error) {
     if (error instanceof AppError) {
@@ -111,13 +114,13 @@ export const loginUser = async (
       throw new AppError("Invalid email or password", 401);
     }
 
-    if (!authData.user) {
+    if (!authData.user || !authData.session) {
       throw new AppError("User not found", 404);
     }
 
     // Get the user profile from our users table
     const { data: profileData, error: profileError } = await supabaseClient
-      .from("users")
+      .from("user_profiles")
       .select("id, email, first_name, last_name, phone, role")
       .eq("id", authData.user.id)
       .single();
@@ -127,22 +130,32 @@ export const loginUser = async (
       throw new AppError("User profile not found", 404);
     }
 
-    // Generate JWT token
-    const token = generateToken(profileData.id);
+    // Generate JWT token (you might want to use the Supabase session token directly)
+    const token = authData.session.access_token;
 
-    // If response object is provided, set the token as an HTTP-only cookie
+    // If response object is provided, set the tokens as HTTP-only cookies
     if (res) {
       res.cookie("authToken", token, {
         httpOnly: true,
         secure: process.env.NODE_ENV === "production",
-        maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+        maxAge: authData.session.expires_in * 1000, // Use Supabase's expiry time
         sameSite: "lax",
+      });
+
+      res.cookie("refreshToken", authData.session.refresh_token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
+        sameSite: "lax",
+        path: "/api/auth", // Restrict to auth endpoints for added security
       });
     }
 
     return {
       user: profileData,
-      token: token,
+      token,
+      refresh_token: authData.session.refresh_token,
+      expires_in: authData.session.expires_in,
     };
   } catch (error) {
     if (error instanceof AppError) {
@@ -193,5 +206,71 @@ export const resetPassword = async (
     }
     logger.error("Unexpected error in resetPassword:", error);
     throw new AppError("Failed to reset password", 500);
+  }
+};
+
+// Refresh tokens
+export const refreshTokens = async (refreshToken: string): Promise<any> => {
+  try {
+    // Use Supabase's built-in refresh mechanism
+    const { data, error } = await supabaseClient.auth.refreshSession({
+      refresh_token: refreshToken,
+    });
+
+    if (error) {
+      logger.error("Error refreshing token:", error);
+      throw new AppError("Invalid or expired refresh token", 401);
+    }
+
+    if (!data.session) {
+      throw new AppError("Failed to refresh session", 500);
+    }
+
+    if (!data.user) {
+      throw new AppError("Failed to refresh session", 500);
+    }
+
+    // Get the user profile from our users table
+    const { data: profileData, error: profileError } = await supabaseClient
+      .from("user_profiles")
+      .select("id, email, first_name, last_name, phone, role")
+      .eq("id", data.user.id)
+      .single();
+
+    if (profileError) {
+      logger.error("Error retrieving user profile:", profileError);
+      throw new AppError("User profile not found", 404);
+    }
+
+    return {
+      user: profileData,
+      access_token: data.session.access_token,
+      refresh_token: data.session.refresh_token,
+      expires_in: data.session.expires_in,
+    };
+  } catch (error) {
+    if (error instanceof AppError) {
+      throw error;
+    }
+    logger.error("Unexpected error in refreshTokens:", error);
+    throw new AppError("Failed to refresh token", 500);
+  }
+};
+
+// Logout user
+export const logoutUser = async (): Promise<void> => {
+  try {
+    const { error } = await supabaseClient.auth.signOut();
+
+    if (error) {
+      logger.error("Error signing out user:", error);
+      throw new AppError("Failed to sign out", 500);
+    }
+  } catch (error) {
+    if (error instanceof AppError) {
+      throw error;
+    }
+    logger.error("Unexpected error in logoutUser:", error);
+    throw new AppError("Failed to logout", 500);
   }
 };

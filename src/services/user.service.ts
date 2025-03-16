@@ -1,5 +1,9 @@
 import { getPaginatedData } from "@/utils/query-helper";
-import { supabaseClient, getAdminClient } from "../config/supabase";
+import {
+  supabaseClient,
+  getAdminClient,
+  createUserClient,
+} from "../config/supabase";
 import { AppError } from "../utils/appError";
 import { logger } from "../utils/logger";
 
@@ -23,10 +27,11 @@ export interface AddressDto {
 }
 
 // Get user profile
-export const getUserProfile = async (userId: string) => {
+export const getUserProfile = async (userId: string, jwt?: string) => {
   try {
-    const { data: user, error } = await supabaseClient
-      .from("users")
+    const client = jwt ? createUserClient(jwt) : supabaseClient;
+    const { data: user, error } = await client
+      .from("user_profiles")
       .select("id, email, first_name, last_name, phone, role, created_at")
       .eq("id", userId)
       .single();
@@ -49,11 +54,14 @@ export const getUserProfile = async (userId: string) => {
 // Update user profile
 export const updateUserProfile = async (
   userId: string,
-  profileData: UserProfileDto
+  profileData: UserProfileDto,
+  jwt?: string
 ) => {
   try {
-    const { data: user, error } = await supabaseClient
-      .from("users")
+    const client = jwt ? createUserClient(jwt) : supabaseClient;
+
+    const { data: user, error } = await client
+      .from("user_profiles")
       .update({
         first_name: profileData.first_name,
         last_name: profileData.last_name,
@@ -82,9 +90,11 @@ export const updateUserProfile = async (
 };
 
 // Get user addresses
-export const getUserAddresses = async (userId: string) => {
+export const getUserAddresses = async (userId: string, jwt?: string) => {
   try {
-    const { data: addresses, error } = await supabaseClient
+    const client = jwt ? createUserClient(jwt) : supabaseClient;
+
+    const { data: addresses, error } = await client
       .from("addresses")
       .select("*")
       .eq("user_id", userId)
@@ -109,12 +119,14 @@ export const getUserAddresses = async (userId: string) => {
 // Add a new address
 export const addUserAddress = async (
   userId: string,
-  addressData: AddressDto
+  addressData: AddressDto,
+  jwt?: string
 ) => {
   try {
+    const client = jwt ? createUserClient(jwt) : supabaseClient;
     // If this is the first address or is set as default, update other addresses
     if (addressData.is_default) {
-      const { error: updateError } = await supabaseClient
+      const { error: updateError } = await client
         .from("addresses")
         .update({ is_default: false })
         .eq("user_id", userId)
@@ -134,7 +146,7 @@ export const addUserAddress = async (
       data,
       error: countError,
       count,
-    } = await supabaseClient
+    } = await client
       .from("addresses")
       .select("id", { count: "exact", head: true })
       .eq("user_id", userId);
@@ -148,7 +160,7 @@ export const addUserAddress = async (
     const isDefault = count === 0 ? true : addressData.is_default;
 
     // Add the new address
-    const { data: address, error } = await supabaseClient
+    const { data: address, error } = await client
       .from("addresses")
       .insert([
         {
@@ -185,11 +197,14 @@ export const addUserAddress = async (
 export const updateUserAddress = async (
   userId: string,
   addressId: string,
-  addressData: Partial<AddressDto>
+  addressData: Partial<AddressDto>,
+  jwt?: string
 ) => {
   try {
     // Check if address exists and belongs to user
-    const { data: existingAddress, error: checkError } = await supabaseClient
+    const client = jwt ? createUserClient(jwt) : supabaseClient;
+
+    const { data: existingAddress, error: checkError } = await client
       .from("addresses")
       .select("id, is_default")
       .eq("id", addressId)
@@ -206,7 +221,7 @@ export const updateUserAddress = async (
 
     // If setting as default, update other addresses
     if (addressData.is_default && !existingAddress.is_default) {
-      const { error: updateError } = await supabaseClient
+      const { error: updateError } = await client
         .from("addresses")
         .update({ is_default: false })
         .eq("user_id", userId)
@@ -222,7 +237,7 @@ export const updateUserAddress = async (
     }
 
     // Update the address
-    const { data: address, error } = await supabaseClient
+    const { data: address, error } = await client
       .from("addresses")
       .update({
         name: addressData.name,
@@ -262,10 +277,16 @@ export const updateUserAddress = async (
 };
 
 // Delete an address
-export const deleteUserAddress = async (userId: string, addressId: string) => {
+export const deleteUserAddress = async (
+  userId: string,
+  addressId: string,
+  jwt?: string
+) => {
   try {
     // Check if address exists and belongs to user
-    const { data: existingAddress, error: checkError } = await supabaseClient
+    const client = jwt ? createUserClient(jwt) : supabaseClient;
+
+    const { data: existingAddress, error: checkError } = await client
       .from("addresses")
       .select("id, is_default")
       .eq("id", addressId)
@@ -281,7 +302,7 @@ export const deleteUserAddress = async (userId: string, addressId: string) => {
     }
 
     // Delete the address
-    const { error } = await supabaseClient
+    const { error } = await client
       .from("addresses")
       .delete()
       .eq("id", addressId)
@@ -297,7 +318,7 @@ export const deleteUserAddress = async (userId: string, addressId: string) => {
 
     // If deleted address was default, set a new default
     if (existingAddress.is_default) {
-      const { data: addresses, error: fetchError } = await supabaseClient
+      const { data: addresses, error: fetchError } = await client
         .from("addresses")
         .select("id")
         .eq("user_id", userId)
@@ -306,7 +327,7 @@ export const deleteUserAddress = async (userId: string, addressId: string) => {
 
       if (!fetchError && addresses && addresses.length > 0) {
         // Set the first address as default
-        const { error: updateError } = await supabaseClient
+        const { error: updateError } = await client
           .from("addresses")
           .update({ is_default: true })
           .eq("id", addresses[0].id)
@@ -373,7 +394,7 @@ export const getUserDetails = async (userId: string) => {
 
     // Get user details
     const { data: user, error } = await adminClient
-      .from("users")
+      .from("user_profiles")
       .select(
         `
         id, 

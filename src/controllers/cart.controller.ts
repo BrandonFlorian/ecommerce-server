@@ -20,6 +20,7 @@ export const getCart = async (
   try {
     // Get cart ID from session or user
     const userId = req.userId;
+    const jwt = req.jwt;
     const sessionId = req.cookies?.cartSessionId || req.body.sessionId;
 
     // Get or create cart
@@ -27,7 +28,7 @@ export const getCart = async (
       cart,
       isNew,
       sessionId: newSessionId,
-    } = await getOrCreateCart(userId, sessionId);
+    } = await getOrCreateCart(userId, sessionId, jwt);
 
     // If this is a new session cart, set cookie
     if (isNew && newSessionId && !userId) {
@@ -39,7 +40,7 @@ export const getCart = async (
     }
 
     // Get cart with items
-    const cartWithItems = await getCartWithItems(cart.id);
+    const cartWithItems = await getCartWithItems(cart.id, jwt);
 
     res.status(200).json({
       status: "success",
@@ -65,6 +66,7 @@ export const addToCart = async (
 
     // Get cart ID from session or user
     const userId = req.userId;
+    const jwt = req.jwt;
     const sessionId = req.cookies?.cartSessionId || req.body.sessionId;
 
     // Get or create cart
@@ -72,7 +74,7 @@ export const addToCart = async (
       cart,
       isNew,
       sessionId: newSessionId,
-    } = await getOrCreateCart(userId, sessionId);
+    } = await getOrCreateCart(userId, sessionId, jwt);
 
     // If this is a new session cart, set cookie
     if (isNew && newSessionId && !userId) {
@@ -90,7 +92,7 @@ export const addToCart = async (
     };
 
     // Pass the session ID to the service function
-    await addItemToCart(cart.id, itemData, newSessionId || sessionId);
+    await addItemToCart(cart.id, itemData, newSessionId || sessionId, jwt);
 
     // Get updated cart with items
     const updatedCart = await getCartWithItems(
@@ -122,16 +124,17 @@ export const updateItem = async (
 
     // Get cart ID from session or user
     const userId = req.userId;
+    const jwt = req.jwt;
     const sessionId = req.cookies?.cartSessionId || req.body.sessionId;
 
     // Get cart (must exist)
-    const { cart } = await getOrCreateCart(userId, sessionId);
+    const { cart } = await getOrCreateCart(userId, sessionId, jwt);
 
     // Update cart item
-    await updateCartItem(cart.id, req.params.itemId, req.body.quantity);
+    await updateCartItem(cart.id, req.params.itemId, req.body.quantity, jwt);
 
     // Get updated cart with items
-    const updatedCart = await getCartWithItems(cart.id);
+    const updatedCart = await getCartWithItems(cart.id, jwt);
 
     res.status(200).json({
       status: "success",
@@ -149,20 +152,19 @@ export const removeItem = async (
   next: NextFunction
 ) => {
   try {
-    console.log("Removing item from cart:", req.params.itemId);
-
     // Get cart ID from session or user
     const userId = req.userId;
+    const jwt = req.jwt;
     const sessionId = req.cookies?.cartSessionId || req.body.sessionId;
 
     // Get cart (must exist)
-    const { cart } = await getOrCreateCart(userId, sessionId);
+    const { cart } = await getOrCreateCart(userId, sessionId, jwt);
 
     // Remove cart item
-    await removeCartItem(cart.id, req.params.itemId, sessionId);
+    await removeCartItem(cart.id, req.params.itemId, sessionId, jwt);
 
     // Get updated cart with items
-    const updatedCart = await getCartWithItems(cart.id, sessionId);
+    const updatedCart = await getCartWithItems(cart.id, sessionId, jwt);
 
     res.status(200).json({
       status: "success",
@@ -182,16 +184,17 @@ export const clearCartItems = async (
   try {
     // Get cart ID from session or user
     const userId = req.userId;
+    const jwt = req.jwt;
     const sessionId = req.cookies?.cartSessionId || req.body.sessionId;
 
     // Get cart (must exist)
-    const { cart } = await getOrCreateCart(userId, sessionId);
+    const { cart } = await getOrCreateCart(userId, sessionId, jwt);
 
     // Clear the cart
-    await clearCart(cart.id);
+    await clearCart(cart.id, jwt);
 
     // Get updated empty cart
-    const updatedCart = await getCartWithItems(cart.id);
+    const updatedCart = await getCartWithItems(cart.id, jwt);
 
     res.status(200).json({
       status: "success",

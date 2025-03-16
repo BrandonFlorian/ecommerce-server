@@ -1,7 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
 import { AppError } from "../utils/appError";
-import { supabaseClient } from "../config/supabase";
 import { logger } from "../utils/logger";
 
 // Extend the Express Request interface to include user information
@@ -11,6 +10,7 @@ declare global {
       user?: any;
       userId?: string;
       userRole?: string;
+      jwt?: string;
     }
   }
 }
@@ -30,10 +30,7 @@ export const protect = async (
       req.headers.authorization.startsWith("Bearer")
     ) {
       token = req.headers.authorization.split(" ")[1];
-    }
-
-    // Also check for token in cookies (for browser clients)
-    else if (req.cookies && req.cookies.authToken) {
+    } else if (req.cookies && req.cookies.authToken) {
       token = req.cookies.authToken;
     }
 
@@ -44,42 +41,28 @@ export const protect = async (
       );
     }
 
-    // Verify token
     try {
-      const decoded = jwt.verify(
-        token,
-        process.env.JWT_SECRET as string
-      ) as any;
+      // Validate the token
+      const payload = jwt.verify(token, process.env.JWT_SECRET!);
 
-      // Check if the user still exists
-      const { data: user, error } = await supabaseClient
-        .from("users")
-        .select("id, email, role")
-        .eq("id", decoded.id)
-        .single();
-
-      if (error || !user) {
+      if (!payload) {
         return next(
           new AppError(
-            "The user belonging to this token no longer exists.",
+            "Invalid token or token has expired. Please log in again.",
             401
           )
         );
       }
-
       // Add user info to request object
-      req.user = user;
-      req.userId = user.id;
-      req.userRole = user.role;
+      req.user = payload;
+      req.userId = payload.sub as string;
+      req.jwt = token;
+      //req.userRole = user.role;
 
       next();
     } catch (error) {
-      return next(
-        new AppError(
-          "Invalid token or token has expired. Please log in again.",
-          401
-        )
-      );
+      console.log("Error in auth middleware:", error);
+      return next(new AppError("Authentication failed", 401));
     }
   } catch (error) {
     logger.error("Error in auth middleware:", error);
@@ -110,31 +93,31 @@ export const optionalAuth = async (
 
     if (token) {
       try {
-        const decoded = jwt.verify(
-          token,
-          process.env.JWT_SECRET as string
-        ) as any;
+        // verify token locally
+        const payload = jwt.verify(token, process.env.JWT_SECRET!);
 
-        // Check if the user exists
-        const { data: user, error } = await supabaseClient
-          .from("users")
-          .select("id, email, role")
-          .eq("id", decoded.id)
-          .single();
-
-        if (!error && user) {
-          // Add user info to request object
-          req.user = user;
-          req.userId = user.id;
-          req.userRole = user.role;
+        if (!payload) {
+          return next(
+            new AppError(
+              "Invalid token or token has expired. Please log in again.",
+              401
+            )
+          );
         }
+
+        // Add user info to request object
+        req.user = payload;
+        req.userId = payload.sub as string;
+        req.jwt = token;
       } catch (error) {
         // Don't return error, just continue without auth
         console.log("Token verification failed, continuing as anonymous");
       }
     }
+
     next();
   } catch (error) {
+    // Don't fail the request, just proceed without auth
     next();
   }
 };

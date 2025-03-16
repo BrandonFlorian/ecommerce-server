@@ -1,5 +1,9 @@
 import { applyFilterIf, getPaginatedData } from "@/utils/query-helper";
-import { supabaseClient, getAdminClient } from "../config/supabase";
+import {
+  supabaseClient,
+  getAdminClient,
+  createUserClient,
+} from "../config/supabase";
 import { AppError } from "../utils/appError";
 import { logger } from "../utils/logger";
 import { generateShippingLabel } from "./shipping.service";
@@ -18,7 +22,8 @@ export interface OrderPaginationParams {
 // Get all orders for a user
 export const getUserOrders = async (
   userId: string,
-  params: OrderPaginationParams = {}
+  params: OrderPaginationParams = {},
+  jwt?: string
 ) => {
   try {
     const {
@@ -30,6 +35,8 @@ export const getUserOrders = async (
       start_date,
       end_date,
     } = params;
+
+    const client = jwt ? createUserClient(jwt) : supabaseClient;
 
     // Define filters function
     const applyFilters = (query: any) => {
@@ -50,7 +57,7 @@ export const getUserOrders = async (
 
     // Use the utility function to get paginated data
     const result = await getPaginatedData({
-      client: supabaseClient,
+      client: client,
       table: "orders",
       options: {
         page,
@@ -101,9 +108,15 @@ export const getUserOrders = async (
 };
 
 // Get a single order by ID
-export const getOrderById = async (orderId: string, userId?: string) => {
+export const getOrderById = async (
+  orderId: string,
+  userId?: string,
+  jwt?: string
+) => {
   try {
-    let orderQuery = supabaseClient
+    const client = jwt ? createUserClient(jwt) : supabaseClient;
+
+    let orderQuery = client
       .from("orders")
       .select(
         `
@@ -158,10 +171,16 @@ export const getOrderById = async (orderId: string, userId?: string) => {
 };
 
 // Cancel an order
-export const cancelOrder = async (orderId: string, userId: string) => {
+export const cancelOrder = async (
+  orderId: string,
+  userId: string,
+  jwt?: string
+) => {
   try {
+    const client = jwt ? createUserClient(jwt) : supabaseClient;
+
     // Check if order exists and belongs to user
-    const { data: order, error: orderError } = await supabaseClient
+    const { data: order, error: orderError } = await client
       .from("orders")
       .select("id, status, user_id")
       .eq("id", orderId)
@@ -201,7 +220,7 @@ export const cancelOrder = async (orderId: string, userId: string) => {
     }
 
     // Get order items to update inventory
-    const { data: orderItems, error: itemsError } = await supabaseClient
+    const { data: orderItems, error: itemsError } = await client
       .from("order_items")
       .select("product_id, quantity")
       .eq("order_id", orderId);

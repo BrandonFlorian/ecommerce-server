@@ -106,6 +106,15 @@ CREATE TABLE orders (
   shipping_method TEXT NOT NULL,
   tracking_number TEXT,
   notes TEXT,
+  receipt_url TEXT,
+  payment_method_details JSONB,
+  dispute_status TEXT,
+  dispute_reason TEXT,
+  dispute_evidence JSONB,
+  dispute_created_at TIMESTAMP WITH TIME ZONE,
+  dispute_resolved_at TIMESTAMP WITH TIME ZONE,
+  fraud_warning BOOLEAN DEFAULT false,
+  fraud_warning_details JSONB,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT now()
 );
@@ -243,3 +252,4 @@ CREATE INDEX idx_orders_user_id ON orders(user_id);
 CREATE INDEX idx_orders_status ON orders(status);
 CREATE INDEX idx_order_items_order_id ON order_items(order_id);
 CREATE INDEX idx_order_items_product_id ON order_items(product_id);
+CREATE INDEX idx_orders_payment_intent_id ON orders(stripe_payment_intent_id);
