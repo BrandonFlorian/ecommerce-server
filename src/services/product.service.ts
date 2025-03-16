@@ -130,7 +130,6 @@ export const getProductById = async (productId: string) => {
       .eq("id", productId)
       .eq("is_active", true)
       .single();
-
     if (error) {
       logger.error(`Error getting product ${productId}:`, error);
       throw new AppError("Product not found", 404);
@@ -404,10 +403,11 @@ export const getProductsByCategory = async (
 ) => {
   try {
     // Set category filter and call getProducts
-    return await getProducts({
+    const result = await getProducts({
       ...params,
       category_id: categoryId,
     });
+    return result;
   } catch (error) {
     if (error instanceof AppError) {
       throw error;
@@ -427,10 +427,11 @@ export const searchProducts = async (
 ) => {
   try {
     // Set search query and call getProducts
-    return await getProducts({
+    const result = await getProducts({
       ...params,
       query: searchQuery,
     });
+    return result;
   } catch (error) {
     if (error instanceof AppError) {
       throw error;

@@ -24,10 +24,7 @@ export const getProfile = async (
     const userId = req.userId!;
 
     // Extract the JWT from the request (without 'Bearer ' prefix)
-    let jwt: string | undefined;
-    if (req.headers.authorization?.startsWith("Bearer ")) {
-      jwt = req.headers.authorization.substring(7);
-    }
+    const jwt = req.jwt;
 
     const user = await getUserProfile(userId, jwt);
 
@@ -47,6 +44,7 @@ export const updateProfile = async (
   next: NextFunction
 ) => {
   try {
+    const jwt = req.jwt;
     // Check for validation errors
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
@@ -60,7 +58,7 @@ export const updateProfile = async (
       phone: req.body.phone,
     };
 
-    const user = await updateUserProfile(userId, profileData);
+    const user = await updateUserProfile(userId, profileData, jwt);
 
     res.status(200).json({
       status: "success",
@@ -79,8 +77,9 @@ export const getAddresses = async (
 ) => {
   try {
     const userId = req.userId!;
+    const jwt = req.jwt;
 
-    const addresses = await getUserAddresses(userId);
+    const addresses = await getUserAddresses(userId, jwt);
 
     res.status(200).json({
       status: "success",
@@ -105,6 +104,7 @@ export const addAddress = async (
     }
 
     const userId = req.userId!;
+    const jwt: string | undefined = req.jwt;
     const addressData: AddressDto = {
       name: req.body.name,
       address_line1: req.body.address_line1,
@@ -116,7 +116,7 @@ export const addAddress = async (
       is_default: req.body.is_default,
     };
 
-    const address = await addUserAddress(userId, addressData);
+    const address = await addUserAddress(userId, addressData, jwt);
 
     res.status(201).json({
       status: "success",
@@ -141,10 +141,16 @@ export const updateAddress = async (
     }
 
     const userId = req.userId!;
+    const jwt = req.jwt;
     const addressId = req.params.id;
     const addressData: Partial<AddressDto> = req.body;
 
-    const address = await updateUserAddress(userId, addressId, addressData);
+    const address = await updateUserAddress(
+      userId,
+      addressId,
+      addressData,
+      jwt
+    );
 
     res.status(200).json({
       status: "success",
@@ -163,9 +169,10 @@ export const removeAddress = async (
 ) => {
   try {
     const userId = req.userId!;
+    const jwt = req.jwt;
     const addressId = req.params.id;
 
-    await deleteUserAddress(userId, addressId);
+    await deleteUserAddress(userId, addressId, jwt);
 
     res.status(204).send();
   } catch (error) {

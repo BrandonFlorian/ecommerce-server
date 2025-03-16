@@ -31,7 +31,8 @@ export const createCheckoutSession = async (
       metadata: req.body.metadata,
     };
 
-    const result = await createPaymentIntent(paymentData);
+    const jwt = req.jwt;
+    const result = await createPaymentIntent(paymentData, jwt);
 
     res.status(200).json({
       status: "success",
@@ -89,8 +90,6 @@ export const stripeWebhook = async (
       console.log("Webhook signature verification failed:", err.message);
       return res.status(400).json({ error: err.message });
     }
-
-    console.log("Webhook verified successfully:", event.type);
 
     const result = await handleStripeWebhook(event);
 

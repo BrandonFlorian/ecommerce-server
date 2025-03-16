@@ -1,5 +1,9 @@
 import stripe from "../config/stripe";
-import { supabaseClient, getAdminClient } from "../config/supabase";
+import {
+  supabaseClient,
+  getAdminClient,
+  createUserClient,
+} from "../config/supabase";
 import { AppError } from "../utils/appError";
 import { logger } from "../utils/logger";
 import { getCartWithItems } from "./cart.service";
@@ -22,17 +26,21 @@ export interface SetupPaymentMethodDto {
 }
 
 // Create a payment intent for checkout
-export const createPaymentIntent = async (data: CreatePaymentIntentDto) => {
+export const createPaymentIntent = async (
+  data: CreatePaymentIntentDto,
+  jwt?: string
+) => {
   try {
     // Get cart with items
-    const { cart, items, summary } = await getCartWithItems(data.cartId);
+    const { cart, items, summary } = await getCartWithItems(data.cartId, jwt);
 
     if (!items || items.length === 0) {
       throw new AppError("Cart is empty", 400);
     }
 
+    const client = jwt ? createUserClient(jwt) : supabaseClient;
     // Get shipping address for rate calculation
-    const { data: shippingAddress, error: addressError } = await supabaseClient
+    const { data: shippingAddress, error: addressError } = await client
       .from("addresses")
       .select("*")
       .eq("id", data.shipping_address_id)
@@ -93,8 +101,6 @@ export const createPaymentIntent = async (data: CreatePaymentIntentDto) => {
         ...(data.metadata || {}),
       },
     });
-
-    console.log("Payment intent:", paymentIntent);
 
     return {
       clientSecret: paymentIntent.client_secret,

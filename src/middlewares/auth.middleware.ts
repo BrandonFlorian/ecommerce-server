@@ -10,6 +10,7 @@ declare global {
       user?: any;
       userId?: string;
       userRole?: string;
+      jwt?: string;
     }
   }
 }
@@ -29,7 +30,6 @@ export const protect = async (
       req.headers.authorization.startsWith("Bearer")
     ) {
       token = req.headers.authorization.split(" ")[1];
-      console.log("Extracted token:", token);
     } else if (req.cookies && req.cookies.authToken) {
       token = req.cookies.authToken;
     }
@@ -44,7 +44,6 @@ export const protect = async (
     try {
       // Validate the token
       const payload = jwt.verify(token, process.env.JWT_SECRET!);
-      console.log("Payload:", payload);
 
       if (!payload) {
         return next(
@@ -54,13 +53,10 @@ export const protect = async (
           )
         );
       }
-
-      // Create a client with the user's token
-      console.log("verify token locally User:", payload);
-
       // Add user info to request object
       req.user = payload;
       req.userId = payload.sub as string;
+      req.jwt = token;
       //req.userRole = user.role;
 
       next();
@@ -99,7 +95,6 @@ export const optionalAuth = async (
       try {
         // verify token locally
         const payload = jwt.verify(token, process.env.JWT_SECRET!);
-        console.log("Payload:", payload);
 
         if (!payload) {
           return next(
@@ -113,6 +108,7 @@ export const optionalAuth = async (
         // Add user info to request object
         req.user = payload;
         req.userId = payload.sub as string;
+        req.jwt = token;
       } catch (error) {
         // Don't return error, just continue without auth
         console.log("Token verification failed, continuing as anonymous");

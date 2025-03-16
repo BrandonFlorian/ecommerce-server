@@ -34,6 +34,8 @@ export const getAllProducts = async (
         ? parseFloat(req.query.max_price as string)
         : undefined,
       in_stock: req.query.in_stock === "true",
+      category_id: req.query.category_id as string,
+      query: req.query.query as string,
     };
 
     const result = await getProducts(params);

@@ -18,7 +18,7 @@ export const getMyOrders = async (
 ) => {
   try {
     const userId = req.userId!;
-
+    const jwt = req.jwt;
     const params: OrderPaginationParams = {
       page: req.query.page ? parseInt(req.query.page as string) : undefined,
       limit: req.query.limit ? parseInt(req.query.limit as string) : undefined,
@@ -29,7 +29,7 @@ export const getMyOrders = async (
       end_date: req.query.end_date as string,
     };
 
-    const result = await getUserOrders(userId, params);
+    const result = await getUserOrders(userId, params, jwt);
 
     res.status(200).json({
       status: "success",
@@ -49,9 +49,10 @@ export const getOrderDetails = async (
 ) => {
   try {
     const userId = req.userId!;
+    const jwt = req.jwt;
     const orderId = req.params.id;
 
-    const order = await getOrderById(orderId, userId);
+    const order = await getOrderById(orderId, userId, jwt);
 
     res.status(200).json({
       status: "success",
@@ -70,9 +71,10 @@ export const cancelMyOrder = async (
 ) => {
   try {
     const userId = req.userId!;
+    const jwt = req.jwt;
     const orderId = req.params.id;
 
-    const result = await cancelOrder(orderId, userId);
+    const result = await cancelOrder(orderId, userId, jwt);
 
     res.status(200).json({
       status: "success",
