@@ -40,7 +40,7 @@ export const getCart = async (
     }
 
     // Get cart with items
-    const cartWithItems = await getCartWithItems(cart.id, jwt);
+    const cartWithItems = await getCartWithItems(cart.id, sessionId, jwt);
 
     res.status(200).json({
       status: "success",
@@ -97,7 +97,8 @@ export const addToCart = async (
     // Get updated cart with items
     const updatedCart = await getCartWithItems(
       cart.id,
-      newSessionId || sessionId
+      newSessionId || sessionId,
+      jwt
     );
 
     res.status(200).json({
@@ -131,10 +132,10 @@ export const updateItem = async (
     const { cart } = await getOrCreateCart(userId, sessionId, jwt);
 
     // Update cart item
-    await updateCartItem(cart.id, req.params.itemId, req.body.quantity, jwt);
+    await updateCartItem(cart.id, req.params.itemId, req.body.quantity, sessionId, jwt);
 
     // Get updated cart with items
-    const updatedCart = await getCartWithItems(cart.id, jwt);
+    const updatedCart = await getCartWithItems(cart.id, sessionId, jwt);
 
     res.status(200).json({
       status: "success",
@@ -194,7 +195,7 @@ export const clearCartItems = async (
     await clearCart(cart.id, jwt);
 
     // Get updated empty cart
-    const updatedCart = await getCartWithItems(cart.id, jwt);
+    const updatedCart = await getCartWithItems(cart.id, sessionId, jwt);
 
     res.status(200).json({
       status: "success",

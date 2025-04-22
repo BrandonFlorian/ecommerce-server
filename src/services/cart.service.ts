@@ -20,11 +20,12 @@ export const getOrCreateCart = async (
   jwt?: string
 ) => {
   try {
+
     if (!userId && !sessionId) {
       // Generate a new session ID if neither userId nor sessionId is provided
       sessionId = uuidv4();
     }
-
+    
     // Choose client based on JWT
     const client = jwt ? createUserClient(jwt) : supabaseClient;
 
@@ -234,9 +235,9 @@ export const addItemToCart = async (
 
     // Create a client with session ID header if available
     const cartItemClient = client.from("cart_items");
-    if (sessionId) {
-      cartItemClient.headers = { "cart-session-id": sessionId };
-    }
+    // if (sessionId) {
+    //   cartItemClient.headers = { "cart-session-id": sessionId }; //not working right now db side
+    // }
 
     // Check if item already exists in cart
     const { data: existingItem, error: itemError } = await cartItemClient
@@ -278,6 +279,7 @@ export const addItemToCart = async (
 
       return updatedItem;
     } else {
+      console.log("\n addItemToCart adding new item");
       // Add new item to cart
       const { data: newItem, error: addError } = await cartItemClient
         .insert([
@@ -321,9 +323,9 @@ export const updateCartItem = async (
     // Create a client with session ID header if available
     const client = jwt ? createUserClient(jwt) : supabaseClient;
     const cartItemClient = client.from("cart_items");
-    if (sessionId) {
-      cartItemClient.headers = { "cart-session-id": sessionId };
-    }
+    // if (sessionId) {
+    //   cartItemClient.headers = { "cart-session-id": sessionId };
+    // }
 
     // Check if item exists in the cart
     const { data: existingItem, error: itemError } = await cartItemClient
@@ -338,7 +340,7 @@ export const updateCartItem = async (
     }
 
     // Check if product exists and is active
-    const { data: product, error: productError } = await supabaseClient
+    const { data: product, error: productError } = await client
       .from("products")
       .select("id, inventory_quantity, is_active")
       .eq("id", existingItem.product_id)
@@ -395,12 +397,14 @@ export const removeCartItem = async (
     // Clean the item ID to ensure no extra quotes
     const cleanItemId = itemId.replace(/"/g, "");
 
+
     // Create a client with session ID header if available
     const cartItemClient = client.from("cart_items");
-    if (sessionId) {
-      cartItemClient.headers = { "cart-session-id": sessionId };
-    }
+    // if (sessionId) {
+    //   cartItemClient.headers = { "cart-session-id": sessionId };
+    // }
     // Check if item exists in the cart
+
     const { data: existingItem, error: itemError } = await cartItemClient
       .select("id")
       .eq("id", cleanItemId)
@@ -413,8 +417,7 @@ export const removeCartItem = async (
     }
 
     // Remove the item
-    const { error: deleteError } = await supabaseClient
-      .from("cart_items")
+    const { data: deletedItem, error: deleteError } = await cartItemClient
       .delete()
       .eq("id", cleanItemId);
 
@@ -445,10 +448,11 @@ export const getCartWithItems = async (
     const cartClient = client.from("carts");
     const itemsClient = client.from("cart_items");
 
-    if (sessionId) {
-      cartClient.headers = { "cart-session-id": sessionId };
-      itemsClient.headers = { "cart-session-id": sessionId };
-    }
+    // if (sessionId) {
+    //   cartClient.headers = { "cart-session-id": sessionId };
+    //   itemsClient.headers = { "cart-session-id": sessionId };
+    // }
+
 
     // Get cart
     const { data: cart, error: cartError } = await cartClient

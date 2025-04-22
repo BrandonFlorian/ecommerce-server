@@ -2,7 +2,6 @@ import jwt, { SignOptions } from "jsonwebtoken";
 import { getAdminClient, supabaseClient } from "../config/supabase";
 import { AppError } from "../utils/appError";
 import { logger } from "../utils/logger";
-import type { StringValue } from "ms";
 import { Response } from "express";
 // Interface for user registration data
 export interface RegisterUserDto {
@@ -27,7 +26,7 @@ export const generateToken = (userId: string): string => {
   }
 
   const period: number = parseInt(process.env.JWT_EXPIRES_IN || "7");
-  const expiresIn: StringValue = `${period}d`;
+  const expiresIn = `${period}d` as const;
 
   const options: SignOptions = {
     expiresIn: expiresIn,

@@ -54,6 +54,7 @@ export const protect = async (
         );
       }
       // Add user info to request object
+     
       req.user = payload;
       req.userId = payload.sub as string;
       req.jwt = token;

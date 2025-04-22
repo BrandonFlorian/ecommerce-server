@@ -58,6 +58,7 @@ export const updateUserProfile = async (
   jwt?: string
 ) => {
   try {
+
     const client = jwt ? createUserClient(jwt) : supabaseClient;
 
     const { data: user, error } = await client
@@ -92,6 +93,7 @@ export const updateUserProfile = async (
 // Get user addresses
 export const getUserAddresses = async (userId: string, jwt?: string) => {
   try {
+
     const client = jwt ? createUserClient(jwt) : supabaseClient;
 
     const { data: addresses, error } = await client
@@ -123,6 +125,7 @@ export const addUserAddress = async (
   jwt?: string
 ) => {
   try {
+
     const client = jwt ? createUserClient(jwt) : supabaseClient;
     // If this is the first address or is set as default, update other addresses
     if (addressData.is_default) {
@@ -201,6 +204,7 @@ export const updateUserAddress = async (
   jwt?: string
 ) => {
   try {
+
     // Check if address exists and belongs to user
     const client = jwt ? createUserClient(jwt) : supabaseClient;
 
@@ -283,6 +287,7 @@ export const deleteUserAddress = async (
   jwt?: string
 ) => {
   try {
+
     // Check if address exists and belongs to user
     const client = jwt ? createUserClient(jwt) : supabaseClient;
 
@@ -333,6 +338,7 @@ export const deleteUserAddress = async (
           .eq("id", addresses[0].id)
           .eq("user_id", userId);
 
+
         if (updateError) {
           logger.error(
             `Error setting new default address for user ${userId}:`,
@@ -359,6 +365,7 @@ export const deleteUserAddress = async (
 // Admin: Get all users
 export const getAllUsers = async (page = 1, limit = 20) => {
   try {
+
     const adminClient = getAdminClient();
 
     // Use the utility function to get paginated data
