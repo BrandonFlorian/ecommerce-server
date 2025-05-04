@@ -11,6 +11,7 @@ import {
   logoutUser,
 } from "../services/auth.service";
 import { AppError } from "../utils/appError";
+import { mergeSessionCartToUserCart } from "@/services/cart.service";
 
 // Register a new user
 export const register = async (
@@ -88,6 +89,23 @@ export const login = async (
     };
 
     const result = await loginUser(loginData, res); // Pass res to set cookies
+
+    // Get session ID from cookies for cart merging
+    const sessionId = req.cookies?.cartSessionId;
+
+    // If we have both a user ID and a session ID, merge carts
+    if (result.user.id && sessionId) {
+      try {
+        await mergeSessionCartToUserCart(
+          result.user.id,
+          result.token,
+          sessionId
+        );
+      } catch (mergeError) {
+        // Log error but don't fail the login process
+        console.error("Error merging carts:", mergeError);
+      }
+    }
 
     res.status(200).json({
       status: "success",

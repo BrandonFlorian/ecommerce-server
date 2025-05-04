@@ -8,6 +8,7 @@ import {
   getCartWithItems,
   clearCart,
   CartItemDto,
+  mergeSessionCartToUserCart,
 } from "../services/cart.service";
 import { AppError } from "../utils/appError";
 
@@ -132,7 +133,13 @@ export const updateItem = async (
     const { cart } = await getOrCreateCart(userId, sessionId, jwt);
 
     // Update cart item
-    await updateCartItem(cart.id, req.params.itemId, req.body.quantity, sessionId, jwt);
+    await updateCartItem(
+      cart.id,
+      req.params.itemId,
+      req.body.quantity,
+      sessionId,
+      jwt
+    );
 
     // Get updated cart with items
     const updatedCart = await getCartWithItems(cart.id, sessionId, jwt);
@@ -192,9 +199,39 @@ export const clearCartItems = async (
     const { cart } = await getOrCreateCart(userId, sessionId, jwt);
 
     // Clear the cart
-    await clearCart(cart.id, jwt);
+    await clearCart(cart.id, sessionId, jwt);
 
     // Get updated empty cart
+    const updatedCart = await getCartWithItems(cart.id, sessionId, jwt);
+
+    res.status(200).json({
+      status: "success",
+      data: updatedCart,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Merge session cart with user cart
+export const mergeSessionCart = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const userId = req.userId;
+    const jwt = req.jwt;
+    const sessionId = req.cookies?.cartSessionId;
+
+    if (!userId || !jwt || !sessionId) {
+      return next(new AppError("Missing required data for cart merge", 400));
+    }
+
+    const mergedCart = await mergeSessionCartToUserCart(userId, jwt, sessionId);
+
+    // Get the updated cart after merge
+    const { cart } = await getOrCreateCart(userId, sessionId, jwt);
     const updatedCart = await getCartWithItems(cart.id, sessionId, jwt);
 
     res.status(200).json({

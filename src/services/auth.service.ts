@@ -1,5 +1,9 @@
 import jwt, { SignOptions } from "jsonwebtoken";
-import { getAdminClient, supabaseClient } from "../config/supabase";
+import {
+  createUserClient,
+  getAdminClient,
+  supabaseClient,
+} from "../config/supabase";
 import { AppError } from "../utils/appError";
 import { logger } from "../utils/logger";
 import { Response } from "express";
@@ -116,9 +120,11 @@ export const loginUser = async (
     if (!authData.user || !authData.session) {
       throw new AppError("User not found", 404);
     }
+    const token = authData.session.access_token;
+    const userClient = createUserClient(token);
 
     // Get the user profile from our users table
-    const { data: profileData, error: profileError } = await supabaseClient
+    const { data: profileData, error: profileError } = await userClient
       .from("user_profiles")
       .select("id, email, first_name, last_name, phone, role")
       .eq("id", authData.user.id)
@@ -128,9 +134,6 @@ export const loginUser = async (
       logger.error("Error retrieving user profile:", profileError);
       throw new AppError("User profile not found", 404);
     }
-
-    // Generate JWT token (you might want to use the Supabase session token directly)
-    const token = authData.session.access_token;
 
     // If response object is provided, set the tokens as HTTP-only cookies
     if (res) {

@@ -5,6 +5,7 @@ import {
   updateItem,
   removeItem,
   clearCartItems,
+  mergeSessionCart,
 } from "../controllers/cart.controller";
 import {
   addToCartValidator,
@@ -23,5 +24,6 @@ router.post("/items", optionalAuth, addToCartValidator, addToCart);
 router.put("/items/:itemId", optionalAuth, updateCartItemValidator, updateItem);
 router.delete("/items/:itemId", optionalAuth, removeItem);
 router.delete("/", optionalAuth, clearCartItems);
+router.post("/merge", optionalAuth, mergeSessionCart);
 
 export default router;
