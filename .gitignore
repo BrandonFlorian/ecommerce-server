@@ -4,3 +4,8 @@ package-lock.json
 backup
 
 pnpm-lock.yaml
+
+dist
+repomix*
+
+/E-Commerce API

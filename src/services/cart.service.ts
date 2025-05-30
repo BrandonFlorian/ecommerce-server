@@ -5,7 +5,6 @@ import {
 } from "../config/supabase";
 import { AppError } from "../utils/appError";
 import { logger } from "../utils/logger";
-import { v4 as uuidv4 } from "uuid";
 
 // Interface for cart item data
 export interface CartItemDto {
@@ -16,25 +15,22 @@ export interface CartItemDto {
 // Get or create a cart for a user or session
 export const getOrCreateCart = async (
   userId?: string,
-  sessionId?: string,
+  //sessionId?: string,
   jwt?: string
 ) => {
   try {
-    if (!userId && !sessionId) {
-      // Generate a new session ID if neither userId nor sessionId is provided
-      sessionId = uuidv4();
+    if (!userId) {
+      throw new AppError("User ID is required", 400);
     }
     // Choose client based on JWT
-    const client = createUserClient(jwt, sessionId);
+    const client = createUserClient(jwt);
 
     // Try to find an existing cart
     let query = client.from("carts").select("*");
 
     if (userId) {
       query = query.eq("user_id", userId);
-    } else if (sessionId) {
-      query = query.eq("session_id", sessionId);
-    }
+    } 
 
     const { data: existingCart, error: findError } = await query.maybeSingle();
 
@@ -48,7 +44,7 @@ export const getOrCreateCart = async (
       return {
         cart: existingCart,
         isNew: false,
-        sessionId: sessionId || null,
+        //sessionId: sessionId || null,
       };
     }
 
@@ -61,7 +57,6 @@ export const getOrCreateCart = async (
       .insert([
         {
           user_id: userId || null,
-          session_id: sessionId || null,
         },
       ])
       .select()
@@ -75,7 +70,6 @@ export const getOrCreateCart = async (
     return {
       cart: newCart,
       isNew: true,
-      sessionId: sessionId || null,
     };
   } catch (error) {
     if (error instanceof AppError) {
@@ -90,45 +84,26 @@ export const getOrCreateCart = async (
 export const mergeSessionCartToUserCart = async (
   userId: string,
   jwt: string,
-  sessionId: string
+  cartItems?: Array<{ product_id: string; quantity: number }> // Accept cart items directly
 ) => {
   try {
-    const client = createUserClient(jwt, sessionId);
-    // Get session cart
-    const { data: sessionCart, error: sessionError } = await client
-      .from("carts")
-      .select("id")
-      .eq("session_id", sessionId)
-      .maybeSingle();
-
-    if (sessionError) {
-      logger.error("Error finding session cart:", sessionError);
-      throw new AppError("Failed to retrieve session cart", 500);
-    }
-
-    // If no session cart, nothing to merge
-    if (!sessionCart) {
-      return;
-    }
-
+    const client = createUserClient(jwt)
+    
     // Get or create user cart
-    const { cart: userCart } = await getOrCreateCart(userId, sessionId, jwt);
+    const { cart: userCart } = await getOrCreateCart(userId, jwt);
+    console.log("User cart:", userCart.id);
 
-    // Get items from session cart
-    const { data: sessionItems, error: itemsError } = await client
-      .from("cart_items")
-      .select("product_id, quantity")
-      .eq("cart_id", sessionCart.id);
-
-    if (itemsError) {
-      logger.error("Error retrieving session cart items:", itemsError);
-      throw new AppError("Failed to retrieve session cart items", 500);
+    // If no items provided, nothing to merge
+    if (!cartItems || cartItems.length === 0) {
+      console.log("No items to merge");
+      return {
+        merged: 0,
+        added: 0,
+        total: 0
+      };
     }
 
-    if (!sessionItems || sessionItems.length === 0) {
-      // No items to transfer
-      return;
-    }
+    console.log("Items to merge:", cartItems.length);
 
     // Get existing items in user cart
     const { data: userItems, error: userItemsError } = await client
@@ -147,51 +122,82 @@ export const mergeSessionCartToUserCart = async (
       return map;
     }, {} as Record<string, any>);
 
-    // Process each session item
-    for (const sessionItem of sessionItems) {
-      if (userItemMap[sessionItem.product_id]) {
+    console.log("Existing user items:", Object.keys(userItemMap).length);
+
+    // Process each provided item
+    let mergedCount = 0;
+    let addedCount = 0;
+    
+    for (const item of cartItems) {
+      // Validate the product exists and is active
+      const { data: product, error: productError } = await client
+        .from("products")
+        .select("id, inventory_quantity, is_active")
+        .eq("id", item.product_id)
+        .eq("is_active", true)
+        .single();
+
+      if (productError || !product) {
+        logger.error(`Product ${item.product_id} not found or inactive, skipping`);
+        continue;
+      }
+
+      if (userItemMap[item.product_id]) {
         // Product already in user cart, update quantity
+        const newQuantity = userItemMap[item.product_id].quantity + item.quantity;
+        
+        // Check inventory
+        if (newQuantity > product.inventory_quantity) {
+          logger.warn(`Quantity for product ${item.product_id} exceeds inventory, capping at ${product.inventory_quantity}`);
+          continue;
+        }
+
         const { error: updateError } = await client
           .from("cart_items")
           .update({
-            quantity:
-              userItemMap[sessionItem.product_id].quantity +
-              sessionItem.quantity,
+            quantity: newQuantity,
             updated_at: new Date().toISOString(),
           })
-          .eq("id", userItemMap[sessionItem.product_id].id);
+          .eq("id", userItemMap[item.product_id].id);
 
         if (updateError) {
           logger.error("Error updating cart item quantity:", updateError);
           // Continue with other items
+        } else {
+          mergedCount++;
         }
       } else {
+        // Check inventory
+        if (item.quantity > product.inventory_quantity) {
+          logger.warn(`Quantity for product ${item.product_id} exceeds inventory, skipping`);
+          continue;
+        }
+
         // Add item to user cart
         const { error: insertError } = await client.from("cart_items").insert([
           {
             cart_id: userCart.id,
-            product_id: sessionItem.product_id,
-            quantity: sessionItem.quantity,
+            product_id: item.product_id,
+            quantity: item.quantity,
           },
         ]);
 
         if (insertError) {
           logger.error("Error adding item to user cart:", insertError);
           // Continue with other items
+        } else {
+          addedCount++;
         }
       }
     }
 
-    // Delete session cart and its items (cascade should handle items)
-    const { error: deleteError } = await client
-      .from("carts")
-      .delete()
-      .eq("id", sessionCart.id);
+    console.log(`Merge completed: ${mergedCount} items merged, ${addedCount} items added`);
 
-    if (deleteError) {
-      logger.error("Error deleting session cart:", deleteError);
-      // Not critical, continue
-    }
+    return {
+      merged: mergedCount,
+      added: addedCount,
+      total: mergedCount + addedCount
+    };
   } catch (error) {
     if (error instanceof AppError) {
       throw error;
@@ -205,12 +211,11 @@ export const mergeSessionCartToUserCart = async (
 export const addItemToCart = async (
   cartId: string,
   itemData: CartItemDto,
-  sessionId?: string,
   jwt?: string
 ) => {
   try {
     // Check if product exists and is active
-    const client = createUserClient(jwt, sessionId);
+    const client = createUserClient(jwt);
     const productClient = client.from("products");
     const { data: product, error: productError } = await productClient
       .select("id, inventory_quantity, is_active")
@@ -307,7 +312,6 @@ export const updateCartItem = async (
   cartId: string,
   itemId: string,
   quantity: number,
-  sessionId?: string,
   jwt?: string
 ) => {
   try {
@@ -315,7 +319,7 @@ export const updateCartItem = async (
     const cleanItemId = itemId.replace(/"/g, "");
 
     // Create a client with session ID header if available
-    const client = createUserClient(jwt, sessionId);
+    const client = createUserClient(jwt);
     const cartItemClient = client.from("cart_items");
 
     // Check if item exists in the cart
@@ -380,11 +384,10 @@ export const updateCartItem = async (
 export const removeCartItem = async (
   cartId: string,
   itemId: string,
-  sessionId?: string,
   jwt?: string
 ) => {
   try {
-    const client = createUserClient(jwt, sessionId);
+    const client = createUserClient(jwt);
     // Clean the item ID to ensure no extra quotes
     const cleanItemId = itemId.replace(/"/g, "");
 
@@ -426,23 +429,17 @@ export const removeCartItem = async (
 // Get cart with items and product details
 export const getCartWithItems = async (
   cartId: string,
-  sessionId?: string,
   jwt?: string
 ) => {
   try {
-    const client = createUserClient(jwt, sessionId);
+    const client = createUserClient(jwt);
     // Create clients with session ID header if available
     const cartClient = client.from("carts");
     const itemsClient = client.from("cart_items");
 
-    // if (sessionId) {
-    //   cartClient.headers = { "cart-session-id": sessionId };
-    //   itemsClient.headers = { "cart-session-id": sessionId };
-    // }
-
     // Get cart
     const { data: cart, error: cartError } = await cartClient
-      .select("id, user_id, session_id, created_at, updated_at")
+      .select("id, user_id, created_at, updated_at")
       .eq("id", cartId)
       .single();
 
@@ -523,11 +520,10 @@ export const getCartWithItems = async (
 // Clear all items from the cart
 export const clearCart = async (
   cartId: string,
-  sessionId?: string,
   jwt?: string
 ) => {
   try {
-    const client = createUserClient(jwt, sessionId);
+    const client = createUserClient(jwt);
 
     const cartItemClient = client.from("cart_items");
 

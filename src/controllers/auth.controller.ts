@@ -99,7 +99,6 @@ export const login = async (
         await mergeSessionCartToUserCart(
           result.user.id,
           result.token,
-          sessionId
         );
       } catch (mergeError) {
         // Log error but don't fail the login process

@@ -35,7 +35,7 @@ export function getAdminClient() {
 }
 
 // Export a function that creates a client with user's JWT for RLS policies
-export const createUserClient = (jwt?: string, sessionId?: string) => {
+export const createUserClient = (jwt?: string, /*sessionId?: string*/) => {
   const cleanToken = jwt?.startsWith("Bearer ") ? jwt.substring(7) : jwt;
   return createClient<Database>(
     process.env.SUPABASE_URL as string,
@@ -44,7 +44,6 @@ export const createUserClient = (jwt?: string, sessionId?: string) => {
       global: {
         headers: {
           Authorization: cleanToken ? `Bearer ${cleanToken}` : "",
-          "cart-session-id": sessionId || "",
         },
       },
     }
