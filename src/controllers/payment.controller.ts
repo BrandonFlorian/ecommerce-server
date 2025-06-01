@@ -8,6 +8,7 @@ import {
 } from "../services/payment.service";
 import { AppError } from "../utils/appError";
 import stripe from "../config/stripe";
+import { createUserClient, supabaseClient } from "@/config/supabase";
 
 // Create a payment intent for checkout
 export const createCheckoutSession = async (
@@ -17,6 +18,7 @@ export const createCheckoutSession = async (
 ) => {
   try {
     // Check for validation errors
+    console.log("createCheckoutSession req", req.body);
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       return next(new AppError("Validation error", 400));
@@ -29,6 +31,7 @@ export const createCheckoutSession = async (
       shipping_method: req.body.shipping_method,
       customerId: req.body.customer_id,
       metadata: req.body.metadata,
+      shipping_rate_id: req.body.shipping_rate_id,
     };
 
     const jwt = req.jwt;
@@ -50,6 +53,7 @@ export const checkPaymentStatus = async (
   next: NextFunction
 ) => {
   try {
+    console.log("checkPaymentStatus req", req.params);
     const { paymentIntentId } = req.params;
 
     const result = await confirmPaymentIntent(paymentIntentId);
@@ -57,6 +61,62 @@ export const checkPaymentStatus = async (
     res.status(200).json({
       status: "success",
       data: result,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getOrderByPaymentIntent = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const { paymentIntentId } = req.params;
+    const userId = req.userId;
+    const jwt = req.jwt;
+
+    const client = jwt ? createUserClient(jwt) : supabaseClient;
+
+    // First verify the payment intent status
+    const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
+    
+    if (paymentIntent.status !== 'succeeded') {
+      return next(new AppError('Payment not completed', 400));
+    }
+
+    // Get the order
+    let query = client
+      .from('orders')
+      .select(`
+        *,
+        order_items (
+          *,
+          products (*)
+        ),
+        shipping_addresses:shipping_address_id (*),
+        billing_addresses:billing_address_id (*)
+      `)
+      .eq('stripe_payment_intent_id', paymentIntentId);
+
+    // If user is provided, ensure they own the order
+    if (userId) {
+      query = query.eq('user_id', userId);
+    }
+
+    const { data: order, error } = await query.single();
+
+    if (error || !order) {
+      return next(new AppError('Order not found', 404));
+    }
+
+    res.status(200).json({
+      status: 'success',
+      data: {
+        order,
+        items: order.order_items
+      }
     });
   } catch (error) {
     next(error);

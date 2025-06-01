@@ -93,7 +93,6 @@ export const updateUserProfile = async (
 // Get user addresses
 export const getUserAddresses = async (userId: string, jwt?: string) => {
   try {
-
     const client = jwt ? createUserClient(jwt) : supabaseClient;
 
     const { data: addresses, error } = await client

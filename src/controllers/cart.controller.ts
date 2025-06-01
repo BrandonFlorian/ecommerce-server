@@ -20,14 +20,6 @@ export const getCart = async (
   next: NextFunction
 ) => {
   try {
-    console.log("getCart headers", req.headers);
-    console.log("getCart cookies", req.cookies);
-    console.log("getCart body", req.body);
-    console.log("getCart query", req.query);
-    console.log("getCart params", req.params);
-    console.log("getCart userId", req.userId);
-    console.log("getCart jwt", req.jwt);
-    //console.log("getCart sessionId", getSessionId(req));
     // Get cart ID from session or user
     const userId = req.userId;
     const jwt = req.jwt;
@@ -68,14 +60,6 @@ export const addToCart = async (
   next: NextFunction
 ) => {
   try {
-    console.log("addToCart headers", req.headers);
-    console.log("addToCart cookies", req.cookies);
-    console.log("addToCart body", req.body);
-    console.log("addToCart query", req.query);
-    console.log("addToCart params", req.params);
-    console.log("addToCart userId", req.userId);
-    console.log("addToCart jwt", req.jwt);
-    //console.log("addToCart sessionId", getSessionId(req));
     // Check for validation errors
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
@@ -133,14 +117,6 @@ export const updateItem = async (
   next: NextFunction
 ) => {
   try {
-    console.log("updateItem headers", req.headers);
-    console.log("updateItem cookies", req.cookies);
-    console.log("updateItem body", req.body);
-    console.log("updateItem query", req.query);
-    console.log("updateItem params", req.params);
-    console.log("updateItem userId", req.userId);
-    console.log("updateItem jwt", req.jwt);
-    //console.log("updateItem sessionId", getSessionId(req));
     // Check for validation errors
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
@@ -182,14 +158,6 @@ export const removeItem = async (
   next: NextFunction
 ) => {
   try {
-    console.log("removeItem headers", req.headers);
-    console.log("removeItem cookies", req.cookies);
-    console.log("removeItem body", req.body);
-    console.log("removeItem query", req.query);
-    console.log("removeItem params", req.params);
-    console.log("removeItem userId", req.userId);
-    console.log("removeItem jwt", req.jwt);
-    //console.log("removeItem sessionId", getSessionId(req));
     // Get cart ID from session or user
     const userId = req.userId;
     const jwt = req.jwt;
@@ -220,14 +188,6 @@ export const clearCartItems = async (
   next: NextFunction
 ) => {
   try {
-    console.log("clearCartItems headers", req.headers);
-    console.log("clearCartItems cookies", req.cookies);
-    console.log("clearCartItems body", req.body);
-    console.log("clearCartItems query", req.query);
-    console.log("clearCartItems params", req.params);
-    console.log("clearCartItems userId", req.userId);
-    console.log("clearCartItems jwt", req.jwt);
-    //console.log("clearCartItems sessionId", getSessionId(req));
     // Get cart ID from session or user
     const userId = req.userId;
     const jwt = req.jwt;

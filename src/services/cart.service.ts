@@ -91,7 +91,6 @@ export const mergeSessionCartToUserCart = async (
     
     // Get or create user cart
     const { cart: userCart } = await getOrCreateCart(userId, jwt);
-    console.log("User cart:", userCart.id);
 
     // If no items provided, nothing to merge
     if (!cartItems || cartItems.length === 0) {
@@ -102,9 +101,6 @@ export const mergeSessionCartToUserCart = async (
         total: 0
       };
     }
-
-    console.log("Items to merge:", cartItems.length);
-
     // Get existing items in user cart
     const { data: userItems, error: userItemsError } = await client
       .from("cart_items")
@@ -121,9 +117,6 @@ export const mergeSessionCartToUserCart = async (
       map[item.product_id] = item;
       return map;
     }, {} as Record<string, any>);
-
-    console.log("Existing user items:", Object.keys(userItemMap).length);
-
     // Process each provided item
     let mergedCount = 0;
     let addedCount = 0;
@@ -190,8 +183,6 @@ export const mergeSessionCartToUserCart = async (
         }
       }
     }
-
-    console.log(`Merge completed: ${mergedCount} items merged, ${addedCount} items added`);
 
     return {
       merged: mergedCount,

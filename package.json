@@ -34,6 +34,7 @@
     "helmet": "^8.0.0",
     "joi": "^17.13.3",
     "jsonwebtoken": "^9.0.2",
+    "shippo": "^2.15.0",
     "stripe": "18.1.0",
     "uuid": "^11.1.0"
   },
@@ -45,6 +46,7 @@
     "@types/express": "^5.0.0",
     "@types/jsonwebtoken": "^9.0.9",
     "@types/node": "^22.13.7",
+    "@types/shippo": "^1.7.8",
     "nodemon": "^3.1.9",
     "supabase": "^2.15.8",
     "ts-node": "^10.9.2",

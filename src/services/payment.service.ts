@@ -16,6 +16,7 @@ export interface CreatePaymentIntentDto {
   shipping_address_id: string;
   billing_address_id: string;
   shipping_method: string;
+  shipping_rate_id: string;
   metadata?: Record<string, string>;
 }
 
@@ -34,6 +35,8 @@ export const createPaymentIntent = async (
     // Get cart with items
     const { cart, items, summary } = await getCartWithItems(data.cartId, jwt);
 
+    console.log("createPaymentIntent items", items);
+
     if (!items || items.length === 0) {
       throw new AppError("Cart is empty", 400);
     }
@@ -45,6 +48,8 @@ export const createPaymentIntent = async (
       .select("*")
       .eq("id", data.shipping_address_id)
       .single();
+
+    console.log("createPaymentIntent shippingAddress", shippingAddress);
 
     if (addressError || !shippingAddress) {
       logger.error("Error retrieving shipping address:", addressError);
@@ -69,14 +74,20 @@ export const createPaymentIntent = async (
       }),
     });
 
+    console.log("createPaymentIntent shippingRates", shippingRates);
+
     // Find selected shipping method
     const selectedShipping = shippingRates.find(
       (rate) => rate.service_code === data.shipping_method
     );
 
+    console.log("createPaymentIntent selectedShipping", selectedShipping);
+    
     if (!selectedShipping) {
       throw new AppError("Selected shipping method not available", 400);
     }
+
+    console.log("createPaymentIntent selectedShipping", selectedShipping);
 
     // Calculate tax (simplified - in a real implementation, use a tax API)
     const taxRate = 0.07; // 7% tax rate - this should come from a tax service based on location
@@ -98,9 +109,12 @@ export const createPaymentIntent = async (
         shipping_address_id: data.shipping_address_id,
         billing_address_id: data.billing_address_id,
         shipping_method: data.shipping_method,
+        shipping_rate_id: data.shipping_rate_id,
         ...(data.metadata || {}),
       },
     });
+
+    console.log("createPaymentIntent paymentIntent", paymentIntent);
 
     return {
       clientSecret: paymentIntent.client_secret,
@@ -131,11 +145,15 @@ export const createPaymentIntent = async (
 // Confirm a payment intent
 export const confirmPaymentIntent = async (paymentIntentId: string) => {
   try {
+    console.log("confirmPaymentIntent paymentIntentId", paymentIntentId);
     const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
+
+    console.log("confirmPaymentIntent paymentIntent", paymentIntent);
 
     if (paymentIntent.status === "succeeded") {
       // Create order from payment intent metadata
       if (paymentIntent.metadata.cart_id) {
+        console.log("confirmPaymentIntent creating order");
         await createOrderFromPaymentIntent(paymentIntent);
       }
 
@@ -827,7 +845,7 @@ export const createOrderFromPaymentIntent = async (paymentIntent: any) => {
       .from("orders")
       .select("id")
       .eq("stripe_payment_intent_id", paymentIntent.id)
-      .maybeSingle();
+      .single();
 
     if (orderCheckError) {
       logger.error("Error checking existing order:", orderCheckError);
@@ -836,10 +854,8 @@ export const createOrderFromPaymentIntent = async (paymentIntent: any) => {
 
     // If order already exists, don't create a duplicate
     if (existingOrder) {
-      logger.info(
-        `Order already exists for payment intent ${paymentIntent.id}`
-      );
-      return { orderId: existingOrder.id };
+      logger.info(`Order ${existingOrder.id} already exists for payment intent ${paymentIntent.id}`);
+      return { orderId: existingOrder.id, created: false };
     }
 
     // Get cart with items
@@ -901,11 +917,15 @@ export const createOrderFromPaymentIntent = async (paymentIntent: any) => {
     });
 
     const selectedShipping = shippingRates.find(
-      (rate) => rate.service_code === metadata.shipping_method
+      (rate) => rate.rate_id === metadata.shipping_rate_id
     );
 
     if (!selectedShipping) {
       throw new AppError("Selected shipping method not available", 400);
+    }
+
+    if (selectedShipping.service_code !== metadata.shipping_method) {
+      throw new AppError("Shipping method mismatch", 400);
     }
 
     // Calculate tax
@@ -916,28 +936,29 @@ export const createOrderFromPaymentIntent = async (paymentIntent: any) => {
     const adminClient = getAdminClient();
 
     const { data: order, error: orderError } = await adminClient
-      .from("orders")
-      .insert([
-        {
-          user_id: metadata.user_id || null,
-          status: "paid",
-          total_amount: paymentIntent.amount,
-          subtotal: summary.subtotal,
-          tax: taxAmount,
-          shipping_cost: selectedShipping.rate,
-          discount_amount: 0, // No discount in this example
-          stripe_payment_intent_id: paymentIntent.id,
-          billing_address_id: metadata.billing_address_id,
-          shipping_address_id: metadata.shipping_address_id,
-          shipping_method: metadata.shipping_method,
-          tracking_number: null, // Will be added later when shipped
-          notes: null,
-          receipt_url: null, // Will be populated by charge.succeeded event
-          payment_method_details: null, // Will be populated by charge.succeeded event
-        },
-      ])
-      .select()
-      .single();
+    .from("orders")
+    .insert([
+      {
+        user_id: metadata.user_id || null,
+        status: "paid",
+        total_amount: paymentIntent.amount,
+        subtotal: summary.subtotal,
+        tax: taxAmount,
+        shipping_cost: selectedShipping.rate,
+        discount_amount: 0,
+        stripe_payment_intent_id: paymentIntent.id,
+        billing_address_id: metadata.billing_address_id,
+        shipping_address_id: metadata.shipping_address_id,
+        shipping_method: metadata.shipping_method,
+        shipping_rate_id: metadata.shipping_rate_id, // Add Shippo rate ID
+        tracking_number: null,
+        notes: null,
+        receipt_url: null,
+        payment_method_details: null,
+      },
+    ])
+    .select()
+    .single();
 
     if (orderError) {
       logger.error("Error creating order:", orderError);
@@ -999,7 +1020,7 @@ export const createOrderFromPaymentIntent = async (paymentIntent: any) => {
       .delete()
       .eq("cart_id", metadata.cart_id);
 
-    return { orderId: order.id };
+    return { orderId: order.id, created: true };
   } catch (error) {
     if (error instanceof AppError) {
       throw error;

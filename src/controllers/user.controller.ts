@@ -76,6 +76,7 @@ export const getAddresses = async (
   next: NextFunction
 ) => {
   try {
+    console.log("getAddresses req", req);
     const userId = req.userId!;
     const jwt = req.jwt;
 
