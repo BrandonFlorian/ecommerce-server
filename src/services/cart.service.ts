@@ -269,7 +269,6 @@ export const addItemToCart = async (
 
       return updatedItem;
     } else {
-      console.log("\n addItemToCart adding new item");
       // Add new item to cart
       const { data: newItem, error: addError } = await cartItemClient
         .insert([
@@ -423,7 +422,8 @@ export const getCartWithItems = async (
   jwt?: string
 ) => {
   try {
-    const client = createUserClient(jwt);
+
+    const client = jwt ? createUserClient(jwt) : supabaseClient;
     // Create clients with session ID header if available
     const cartClient = client.from("carts");
     const itemsClient = client.from("cart_items");
@@ -433,6 +433,8 @@ export const getCartWithItems = async (
       .select("id, user_id, created_at, updated_at")
       .eq("id", cartId)
       .single();
+
+    console.log("getCartWithItems cart", cart);
 
     if (cartError || !cart) {
       logger.error("Error finding cart:", cartError);
@@ -465,6 +467,8 @@ export const getCartWithItems = async (
       `
       )
       .eq("cart_id", cartId);
+
+    console.log("getCartWithItems cartItems", cartItems);
 
     if (itemsError) {
       logger.error("Error retrieving cart items:", itemsError);

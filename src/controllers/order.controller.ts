@@ -17,7 +17,6 @@ export const getMyOrders = async (
   next: NextFunction
 ) => {
   try {
-    console.log("getMyOrders req", req);
 
     const userId = req.userId!;
     const jwt = req.jwt;
@@ -50,7 +49,6 @@ export const getOrderDetails = async (
   next: NextFunction
 ) => {
   try {
-    console.log("getOrderDetails req", req);
 
     const userId = req.userId!;
     const jwt = req.jwt;

@@ -17,7 +17,6 @@ export const calculateShippingRates = async (
     // Calculate parcel details
     const parcelDetails = calculateParcelDetails(items)
 
-    console.log("calculateShippingRates parcelDetails", parcelDetails);
     // Create shipment with Shippo
     const shipment = await shippo.shipments.create({
       addressFrom: FROM_ADDRESS,
@@ -43,8 +42,6 @@ export const calculateShippingRates = async (
       async: false
     })
 
-    console.log("calculateShippingRates shipment", shipment);
-
     if (!shipment.rates || shipment.rates.length === 0) {
       logger.warn('No rates returned from Shippo')
       throw new AppError('No shipping rates available for this address', 400)
@@ -63,9 +60,7 @@ export const calculateShippingRates = async (
       // Filter for rates that can be purchased through Shippo
       .filter(rate => typeof rate.objectId === 'string') 
       .map(rate => {
-
-        console.log("calculateShippingRates rate", rate);
-        
+      
         // Check if this service is eligible for free shipping
         const serviceToken = rate.servicelevel?.token || '';
         const isFreeShippingMethod = freeShippingConfig.methods.includes(serviceToken);
