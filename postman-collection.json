@@ -111,6 +111,10 @@
                 "type": "text"
               }
             ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refresh_token\": \"{{refresh_token}}\"\n}"
+            },
             "url": {
               "raw": "{{base_url}}/api/auth/refresh-token",
               "host": ["{{base_url}}"],
@@ -243,6 +247,59 @@
                 {
                   "key": "category_id",
                   "value": "some-uuid",
+                  "disabled": true
+                },
+                {
+                  "key": "min_price",
+                  "value": "10",
+                  "disabled": true
+                },
+                {
+                  "key": "max_price",
+                  "value": "100",
+                  "disabled": true
+                },
+                {
+                  "key": "in_stock",
+                  "value": "true",
+                  "disabled": true
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Search Products",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/products/search?q=bath%20salts",
+              "host": ["{{base_url}}"],
+              "path": ["api", "products", "search"],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "bath salts"
+                },
+                {
+                  "key": "page",
+                  "value": "1",
+                  "disabled": true
+                },
+                {
+                  "key": "limit",
+                  "value": "10",
+                  "disabled": true
+                },
+                {
+                  "key": "sort_by",
+                  "value": "created_at",
+                  "disabled": true
+                },
+                {
+                  "key": "sort_order",
+                  "value": "desc",
                   "disabled": true
                 },
                 {
@@ -553,6 +610,35 @@
             }
           },
           "response": []
+        },
+        {
+          "name": "Merge Session Cart",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"cartItems\": [\n    {\n      \"product_id\": \"product-id-1\",\n      \"quantity\": 2\n    },\n    {\n      \"product_id\": \"product-id-2\",\n      \"quantity\": 1\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/cart/merge",
+              "host": ["{{base_url}}"],
+              "path": ["api", "cart", "merge"]
+            },
+            "description": "Merge session cart items into user cart after login"
+          },
+          "response": []
         }
       ]
     },
@@ -567,7 +653,8 @@
               {
                 "key": "Authorization",
                 "value": "Bearer {{token}}",
-                "type": "text"
+                "type": "text",
+                "disabled": true
               },
               {
                 "key": "Content-Type",
@@ -627,6 +714,41 @@
             }
           },
           "response": []
+        },
+        {
+          "name": "Create Shipping Label (Admin)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"notes\": \"Handle with care\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/shipping/orders/:orderId/create-label",
+              "host": ["{{base_url}}"],
+              "path": ["api", "shipping", "orders", ":orderId", "create-label"],
+              "variable": [
+                {
+                  "key": "orderId",
+                  "value": "order-id-here"
+                }
+              ]
+            },
+            "description": "Create shipping label for an order using the stored shipping rate"
+          },
+          "response": []
         }
       ]
     },
@@ -651,7 +773,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"cart_id\": \"cart-id-here\",\n  \"shipping_address_id\": \"address-id-here\",\n  \"billing_address_id\": \"address-id-here\",\n  \"shipping_method\": \"standard\"\n}"
+              "raw": "{\n  \"cart_id\": \"cart-id-here\",\n  \"shipping_address_id\": \"address-id-here\",\n  \"billing_address_id\": \"address-id-here\",\n  \"shipping_method\": \"standard\",\n  \"shipping_rate_id\": \"rate-id-from-shipping-calculation\",\n  \"customer_id\": \"stripe-customer-id-optional\"\n}"
             },
             "url": {
               "raw": "{{base_url}}/api/payment/create-payment-intent",
@@ -703,9 +825,44 @@
               }
             ],
             "url": {
-              "raw": "{{base_url}}/api/orders/my-orders",
+              "raw": "{{base_url}}/api/orders/my-orders?page=1&limit=10",
               "host": ["{{base_url}}"],
-              "path": ["api", "orders", "my-orders"]
+              "path": ["api", "orders", "my-orders"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                },
+                {
+                  "key": "status",
+                  "value": "paid",
+                  "disabled": true
+                },
+                {
+                  "key": "sort_by",
+                  "value": "created_at",
+                  "disabled": true
+                },
+                {
+                  "key": "sort_order",
+                  "value": "desc",
+                  "disabled": true
+                },
+                {
+                  "key": "start_date",
+                  "value": "2024-01-01",
+                  "disabled": true
+                },
+                {
+                  "key": "end_date",
+                  "value": "2024-12-31",
+                  "disabled": true
+                }
+              ]
             }
           },
           "response": []
@@ -935,9 +1092,19 @@
               }
             ],
             "url": {
-              "raw": "{{base_url}}/api/admin/users",
+              "raw": "{{base_url}}/api/admin/users?page=1&limit=20",
               "host": ["{{base_url}}"],
-              "path": ["api", "admin", "users"]
+              "path": ["api", "admin", "users"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "20"
+                }
+              ]
             }
           },
           "response": []
@@ -979,9 +1146,44 @@
               }
             ],
             "url": {
-              "raw": "{{base_url}}/api/admin/orders",
+              "raw": "{{base_url}}/api/admin/orders?page=1&limit=10",
               "host": ["{{base_url}}"],
-              "path": ["api", "admin", "orders"]
+              "path": ["api", "admin", "orders"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                },
+                {
+                  "key": "status",
+                  "value": "paid",
+                  "disabled": true
+                },
+                {
+                  "key": "sort_by",
+                  "value": "created_at",
+                  "disabled": true
+                },
+                {
+                  "key": "sort_order",
+                  "value": "desc",
+                  "disabled": true
+                },
+                {
+                  "key": "start_date",
+                  "value": "2024-01-01",
+                  "disabled": true
+                },
+                {
+                  "key": "end_date",
+                  "value": "2024-12-31",
+                  "disabled": true
+                }
+              ]
             }
           },
           "response": []
@@ -1087,7 +1289,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"id\": \"evt_test_webhook\",\n  \"object\": \"event\",\n  \"type\": \"payment_intent.succeeded\",\n  \"data\": {\n    \"object\": {\n      \"id\": \"pi_test123\",\n      \"amount\": 1999,\n      \"metadata\": {\n        \"cart_id\": \"cart-id-here\",\n        \"shipping_address_id\": \"address-id-here\",\n        \"billing_address_id\": \"address-id-here\",\n        \"shipping_method\": \"standard\",\n        \"user_id\": \"user-id-here\"\n      }\n    }\n  }\n}"
+              "raw": "{\n  \"id\": \"evt_test_webhook\",\n  \"object\": \"event\",\n  \"type\": \"payment_intent.succeeded\",\n  \"data\": {\n    \"object\": {\n      \"id\": \"pi_test123\",\n      \"amount\": 1999,\n      \"metadata\": {\n        \"cart_id\": \"cart-id-here\",\n        \"shipping_address_id\": \"address-id-here\",\n        \"billing_address_id\": \"address-id-here\",\n        \"shipping_method\": \"standard\",\n        \"shipping_rate_id\": \"rate-id-here\",\n        \"user_id\": \"user-id-here\"\n      }\n    }\n  }\n}"
             },
             "url": {
               "raw": "{{base_url}}/api/payment/webhook",
@@ -1269,4 +1471,4 @@
       "type": "string"
     }
   ]
-}
+} 

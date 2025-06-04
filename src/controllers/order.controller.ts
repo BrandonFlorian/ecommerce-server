@@ -17,6 +17,7 @@ export const getMyOrders = async (
   next: NextFunction
 ) => {
   try {
+
     const userId = req.userId!;
     const jwt = req.jwt;
     const params: OrderPaginationParams = {
@@ -48,6 +49,7 @@ export const getOrderDetails = async (
   next: NextFunction
 ) => {
   try {
+
     const userId = req.userId!;
     const jwt = req.jwt;
     const orderId = req.params.id;

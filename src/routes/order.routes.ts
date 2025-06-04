@@ -8,9 +8,17 @@ import {
   adminUpdateOrderStatus,
 } from "../controllers/order.controller";
 import { updateOrderStatusValidator } from "../utils/validators/order.validator";
-import { protect, restrictTo } from "../middlewares/auth.middleware";
+import { protect, restrictTo, optionalAuth } from "../middlewares/auth.middleware";
+import { getOrderByPaymentIntent } from "@/controllers/payment.controller";
 
 const router = express.Router();
+
+// Order by payment intent route (accessible with optional auth)
+router.get(
+  '/by-payment-intent/:paymentIntentId',
+  optionalAuth,
+  getOrderByPaymentIntent
+);
 
 // Protected routes for authenticated users
 router.use(protect);

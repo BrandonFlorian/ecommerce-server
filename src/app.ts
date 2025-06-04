@@ -91,7 +91,7 @@ app.use("/api/shipping", shippingRoutes);
 app.use("/api/payment", paymentRoutes);
 
 // 404 handler
-app.all("*", (req: Request, res: Response, next: NextFunction) => {
+app.all("/{*path}", (req: Request, res: Response, next: NextFunction) => {
   next(new AppError(`Cannot find ${req.originalUrl} on this server.`, 404));
 });
 

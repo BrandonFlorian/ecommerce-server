@@ -155,7 +155,7 @@ export const getOrderById = async (
 
     const { data: order, error } = await orderQuery.single();
 
-    if (error) {
+    if (error || !order) {
       logger.error(`Error getting order ${orderId}:`, error);
       throw new AppError("Order not found", 404);
     }
@@ -302,6 +302,7 @@ export const updateOrderStatus = async (
           `
             id,
             shipping_method,
+            shipping_rate_id,
             shipping_address_id,
             order_items (
               id,
@@ -337,37 +338,14 @@ export const updateOrderStatus = async (
         throw new AppError("Failed to fetch shipping address", 500);
       }
 
-      // Prepare data for label generation
-      const fromAddress = {
-        address_line1: "123 Warehouse St",
-        address_line2: "",
-        city: "Metropolis",
-        state: "NY",
-        postal_code: "10001",
-        country: "US",
-      };
-
-      // Prepare items for shipping
-      const items = fullOrder.order_items.map((item) => {
-        // Handle potential array or object structure for products
-        const product = Array.isArray(item.products)
-          ? item.products[0]
-          : item.products;
-
-        return {
-          product_id: item.product_id,
-          quantity: item.quantity,
-          weight: product.weight,
-          dimensions: product.dimensions,
-        };
-      });
+      // Check if we have a shipping rate ID
+      if (!fullOrder.shipping_rate_id) {
+        throw new AppError("No shipping rate ID found for order", 400);
+      }
 
       const { trackingNumber: newTrackingNumber } = await generateShippingLabel(
         orderId,
-        fullOrder.shipping_method,
-        fromAddress,
-        shippingAddress,
-        items
+        fullOrder.shipping_rate_id
       );
       trackingNumber = newTrackingNumber;
     }

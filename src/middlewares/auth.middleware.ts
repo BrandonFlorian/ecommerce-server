@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from "express";
-import jwt from "jsonwebtoken";
+import { extractJwtFromRequest } from "../utils/jwt";
 import { AppError } from "../utils/appError";
+import { getUserFromToken } from "../utils/auth-helper";
 import { logger } from "../utils/logger";
 
 // Extend the Express Request interface to include user information
@@ -15,121 +16,89 @@ declare global {
   }
 }
 
-// Middleware to protect routes - requires valid JWT
+/**
+ * Helper function to validate JWT and extract user details
+ * @param req Express request
+ * @param requireAuth Whether authentication is required (true) or optional (false)
+ * @returns User details object if JWT is valid, null if JWT is not present and not required
+ * @throws AppError if JWT is required but invalid or missing
+ */
+const validateJwt = (req: Request, requireAuth: boolean = true) => {
+  try {
+    // Extract JWT from request
+    const token = extractJwtFromRequest(req);
+    
+    if (!token) {
+      if (requireAuth) {
+        throw new AppError("Authentication required", 401);
+      }
+      return null;
+    }
+    
+    // Verify and decode the token
+    const userDetails = getUserFromToken(token);
+    
+    // Add user details to request
+    req.jwt = token;
+    req.userId = userDetails.userId;
+    req.userRole = userDetails.role;
+    
+    return userDetails;
+  } catch (error) {
+    if (error instanceof AppError) {
+      throw error;
+    }
+    
+    logger.error("JWT validation error:", error);
+    throw new AppError("Authentication failed", 401);
+  }
+};
+
+// Middleware to protect routes - requires authentication
 export const protect = async (
   req: Request,
   res: Response,
   next: NextFunction
 ) => {
   try {
-    let token: string | undefined;
-
-    // Get token from Authorization header
-    if (
-      req.headers.authorization &&
-      req.headers.authorization.startsWith("Bearer")
-    ) {
-      token = req.headers.authorization.split(" ")[1];
-    } else if (req.cookies && req.cookies.authToken) {
-      token = req.cookies.authToken;
-    }
-
-    // Check if token exists
-    if (!token) {
-      return next(
-        new AppError("You are not logged in. Please log in to get access.", 401)
-      );
-    }
-
-    try {
-      // Validate the token
-      const payload = jwt.verify(token, process.env.JWT_SECRET!);
-
-      if (!payload) {
-        return next(
-          new AppError(
-            "Invalid token or token has expired. Please log in again.",
-            401
-          )
-        );
-      }
-      // Add user info to request object
-      req.user = payload;
-      req.userId = payload.sub as string;
-      req.jwt = token;
-      //req.userRole = user.role;
-
-      next();
-    } catch (error) {
-      console.log("Error in auth middleware:", error);
-      return next(new AppError("Authentication failed", 401));
-    }
+    // Validate JWT and require authentication
+    validateJwt(req, true);
+    next();
   } catch (error) {
-    logger.error("Error in auth middleware:", error);
-    return next(new AppError("Authentication failed", 500));
+    next(error);
   }
 };
 
-// Optional authentication middleware
+// Middleware for optional authentication
 export const optionalAuth = async (
   req: Request,
   res: Response,
   next: NextFunction
 ) => {
   try {
-    let token: string | undefined;
-
-    // Get token from Authorization header
-    if (
-      req.headers.authorization &&
-      req.headers.authorization.startsWith("Bearer")
-    ) {
-      token = req.headers.authorization.split(" ")[1];
-    }
-    // Also check for token in cookies
-    else if (req.cookies && req.cookies.authToken) {
-      token = req.cookies.authToken;
-    }
-
-    if (token) {
-      try {
-        // verify token locally
-        const payload = jwt.verify(token, process.env.JWT_SECRET!);
-
-        if (!payload) {
-          return next(
-            new AppError(
-              "Invalid token or token has expired. Please log in again.",
-              401
-            )
-          );
-        }
-
-        // Add user info to request object
-        req.user = payload;
-        req.userId = payload.sub as string;
-        req.jwt = token;
-      } catch (error) {
-        // Don't return error, just continue without auth
-        console.log("Token verification failed, continuing as anonymous");
-      }
-    }
-
+    // Validate JWT but don't require authentication
+    validateJwt(req, false);
     next();
   } catch (error) {
-    // Don't fail the request, just proceed without auth
-    next();
+    next(error);
   }
 };
 
-// Middleware to restrict access to certain roles
+// Middleware to restrict access to specific roles
 export const restrictTo = (...roles: string[]) => {
   return (req: Request, res: Response, next: NextFunction) => {
-    if (!req.userRole || !roles.includes(req.userRole)) {
+    // First ensure user is authenticated
+    if (!req.userId || !req.userRole) {
+      return next(new AppError("Authentication required", 401));
+    }
+
+    // Then check if user has required role
+    if (!roles.includes(req.userRole)) {
       return next(
         new AppError("You do not have permission to perform this action", 403)
       );
     }
+
     next();
   };
 };

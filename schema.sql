@@ -90,7 +90,7 @@ CREATE TABLE cart_items (
   UNIQUE(cart_id, product_id)
 );
 
--- Orders table
+-- Orders table (updated with shipping fields)
 CREATE TABLE orders (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   user_id UUID REFERENCES users(id),
@@ -104,6 +104,11 @@ CREATE TABLE orders (
   billing_address_id UUID NOT NULL REFERENCES addresses(id),
   shipping_address_id UUID NOT NULL REFERENCES addresses(id),
   shipping_method TEXT NOT NULL,
+  shipping_rate_id TEXT,
+  carrier TEXT,
+  label_url TEXT,
+  shipping_label_created_at TIMESTAMP WITH TIME ZONE,
+  carrier_account_id TEXT,
   tracking_number TEXT,
   notes TEXT,
   receipt_url TEXT,
@@ -130,6 +135,20 @@ CREATE TABLE order_items (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT now()
 );
 
+-- Shipping events table (new)
+CREATE TABLE shipping_events (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  order_id UUID NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
+  tracking_number TEXT NOT NULL,
+  carrier TEXT NOT NULL,
+  status TEXT NOT NULL,
+  status_details TEXT,
+  description TEXT,
+  location TEXT,
+  event_date TIMESTAMP WITH TIME ZONE NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT now()
+);
+
 -- Function to increment inventory quantity
 CREATE OR REPLACE FUNCTION increment_inventory(p_product_id UUID, p_quantity INTEGER)
 RETURNS VOID AS $$
@@ -153,6 +172,7 @@ ALTER TABLE carts ENABLE ROW LEVEL SECURITY;
 ALTER TABLE cart_items ENABLE ROW LEVEL SECURITY;
 ALTER TABLE orders ENABLE ROW LEVEL SECURITY;
 ALTER TABLE order_items ENABLE ROW LEVEL SECURITY;
+ALTER TABLE shipping_events ENABLE ROW LEVEL SECURITY;
 
 -- Users table policies
 CREATE POLICY "Users can view their own profile" ON users
@@ -238,6 +258,19 @@ CREATE POLICY "Users can view their own order items" ON order_items
 CREATE POLICY "Admin can manage all order items" ON order_items
   USING (auth.jwt() ->> 'role' = 'admin');
 
+-- Shipping events table policies
+CREATE POLICY "Users can view their own shipping events" ON shipping_events
+  FOR SELECT USING (
+    EXISTS (
+      SELECT 1 FROM orders
+      WHERE orders.id = order_id
+      AND orders.user_id = auth.uid()
+    )
+  );
+
+CREATE POLICY "Admin can manage all shipping events" ON shipping_events
+  USING (auth.jwt() ->> 'role' = 'admin');
+
 -- Create indexes for performance
 CREATE INDEX idx_users_email ON users(email);
 CREATE INDEX idx_addresses_user_id ON addresses(user_id);
@@ -253,3 +286,5 @@ CREATE INDEX idx_orders_status ON orders(status);
 CREATE INDEX idx_order_items_order_id ON order_items(order_id);
 CREATE INDEX idx_order_items_product_id ON order_items(product_id);
 CREATE INDEX idx_orders_payment_intent_id ON orders(stripe_payment_intent_id);
+CREATE INDEX idx_shipping_events_order_id ON shipping_events(order_id);
+CREATE INDEX idx_shipping_events_tracking ON shipping_events(tracking_number);

@@ -1,6 +1,7 @@
 import { SupabaseClient } from "@supabase/supabase-js";
 import { logger } from "./logger";
 import { AppError } from "./appError";
+import { Request } from "express";
 
 /**
  * Type for pagination parameters
@@ -136,3 +137,13 @@ export function applyFilterIf<T>(
 ): T {
   return condition ? filterFn(query) : query;
 }
+
+//unused
+export const getSessionId = (req: Request) => {
+  return (
+    req.cookies?.cartSessionId || 
+    req.query?.sessionId || 
+    req.headers['x-session-id'] ||
+    (req.body && req.body.sessionId)
+  );
+};
