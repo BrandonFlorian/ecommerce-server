@@ -1,6 +1,5 @@
 import { Request, Response, NextFunction } from "express";
 import { validationResult } from "express-validator";
-import { randomUUID } from "crypto";
 import {
   getOrCreateCart,
   addItemToCart,
@@ -13,47 +12,36 @@ import {
 } from "../services/cart.service";
 import { AppError } from "../utils/appError";
 
-// Get cart with all items
+// Get cart with items and product details
 export const getCart = async (
   req: Request,
   res: Response,
   next: NextFunction
 ) => {
   try {
-    // Get cart ID from session or user
-    const userId = req.userId;
     const jwt = req.jwt;
-    //const sessionId = getSessionId(req);
-
-    // Get or create cart
-    const {
-      cart,
-      isNew,
-      //sessionId: newSessionId,
-    } = await getOrCreateCart(userId, jwt);
-
-    // If this is a new session cart, set cookie
-    if (isNew && !userId) {
-      res.cookie("cartSessionId", randomUUID(), {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
-      });
+    
+    // Ensure JWT exists
+    if (!jwt) {
+      return next(new AppError("Authentication required", 401));
     }
-
-    // Get cart with items
-    const cartWithItems = await getCartWithItems(cart.id, jwt);
+    
+    // JWT will be used to extract the user ID in the service
+    const { cart } = await getOrCreateCart(jwt);
+    
+    // Get cart items with product details
+    const result = await getCartWithItems(cart.id, jwt);
 
     res.status(200).json({
       status: "success",
-      data: cartWithItems,
+      data: result,
     });
   } catch (error) {
     next(error);
   }
 };
 
-// Add item to cart
+// Add an item to the cart
 export const addToCart = async (
   req: Request,
   res: Response,
@@ -66,44 +54,28 @@ export const addToCart = async (
       return next(new AppError("Validation error", 400));
     }
 
-    // Get cart ID from session or user
-    const userId = req.userId;
     const jwt = req.jwt;
-    //const sessionId = getSessionId(req);
-
-    // Get or create cart
-    const {
-      cart,
-      isNew,
-    } = await getOrCreateCart(userId, jwt);
-
-    // If this is a new session cart, set cookie
-    if (isNew && !userId) {
-      res.cookie("cartSessionId", randomUUID(), {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
-      });
+    
+    // Ensure JWT exists
+    if (!jwt) {
+      return next(new AppError("Authentication required", 401));
     }
-
-    // Add item to cart
+    
+    // Validate item data
     const itemData: CartItemDto = {
       product_id: req.body.product_id,
-      quantity: req.body.quantity,
+      quantity: req.body.quantity || 1,
     };
 
-    // Pass the session ID to the service function
-    await addItemToCart(cart.id, itemData, jwt);
+    // Get or create cart - JWT will be used to extract user ID
+    const { cart } = await getOrCreateCart(jwt);
 
-    // Get updated cart with items
-    const updatedCart = await getCartWithItems(
-      cart.id,
-      jwt
-    );
+    // Add item to cart
+    const result = await addItemToCart(cart.id, itemData, jwt);
 
     res.status(200).json({
       status: "success",
-      data: updatedCart,
+      data: result,
     });
   } catch (error) {
     next(error);
@@ -123,13 +95,15 @@ export const updateItem = async (
       return next(new AppError("Validation error", 400));
     }
 
-    // Get cart ID from session or user
-    const userId = req.userId;
     const jwt = req.jwt;
-    //const sessionId = getSessionId(req);
+    
+    // Ensure JWT exists
+    if (!jwt) {
+      return next(new AppError("Authentication required", 401));
+    }
 
-    // Get cart (must exist)
-    const { cart } = await getOrCreateCart(userId, jwt);
+    // Get cart using JWT
+    const { cart } = await getOrCreateCart(jwt);
 
     // Update cart item
     await updateCartItem(
@@ -158,13 +132,15 @@ export const removeItem = async (
   next: NextFunction
 ) => {
   try {
-    // Get cart ID from session or user
-    const userId = req.userId;
     const jwt = req.jwt;
-    //const sessionId = getSessionId(req);
+    
+    // Ensure JWT exists
+    if (!jwt) {
+      return next(new AppError("Authentication required", 401));
+    }
 
-    // Get cart (must exist)
-    const { cart } = await getOrCreateCart(userId, jwt);
+    // Get cart using JWT
+    const { cart } = await getOrCreateCart(jwt);
 
     // Remove cart item
     await removeCartItem(cart.id, req.params.itemId, jwt);
@@ -188,13 +164,15 @@ export const clearCartItems = async (
   next: NextFunction
 ) => {
   try {
-    // Get cart ID from session or user
-    const userId = req.userId;
     const jwt = req.jwt;
-    //const sessionId = getSessionId(req);
+    
+    // Ensure JWT exists
+    if (!jwt) {
+      return next(new AppError("Authentication required", 401));
+    }
 
-    // Get cart (must exist)
-    const { cart } = await getOrCreateCart(userId, jwt);
+    // Get cart using JWT
+    const { cart } = await getOrCreateCart(jwt);
 
     // Clear the cart
     await clearCart(cart.id, jwt);
@@ -218,12 +196,10 @@ export const mergeSessionCart = async (
   next: NextFunction
 ) => {
   try {
-    
-    const userId = req.userId;
     const jwt = req.jwt;
     const { cartItems } = req.body;
 
-    if (!userId || !jwt) {
+    if (!jwt) {
       return next(new AppError("Authentication required for cart merge", 401));
     }
 
@@ -238,11 +214,11 @@ export const mergeSessionCart = async (
       }
     }
 
-    // Perform the merge with the provided cart items
-    const mergeResult = await mergeSessionCartToUserCart(userId, jwt, cartItems);
+    // Perform the merge using JWT
+    const mergeResult = await mergeSessionCartToUserCart(jwt, cartItems);
 
     // Get the updated cart after merge
-    const { cart } = await getOrCreateCart(userId, jwt);
+    const { cart } = await getOrCreateCart(jwt);
     const updatedCart = await getCartWithItems(cart.id, jwt);
 
     res.status(200).json({

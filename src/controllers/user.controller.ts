@@ -21,12 +21,16 @@ export const getProfile = async (
   next: NextFunction
 ) => {
   try {
-    const userId = req.userId!;
-
-    // Extract the JWT from the request (without 'Bearer ' prefix)
+    // Extract the JWT from the request
     const jwt = req.jwt;
+    
+    // Ensure JWT exists
+    if (!jwt) {
+      return next(new AppError("Authentication required", 401));
+    }
 
-    const user = await getUserProfile(userId, jwt);
+    // User ID is now extracted from JWT in the service
+    const user = await getUserProfile(jwt);
 
     res.status(200).json({
       status: "success",
@@ -45,20 +49,26 @@ export const updateProfile = async (
 ) => {
   try {
     const jwt = req.jwt;
+    
+    // Ensure JWT exists
+    if (!jwt) {
+      return next(new AppError("Authentication required", 401));
+    }
+    
     // Check for validation errors
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       return next(new AppError("Validation error", 400));
     }
 
-    const userId = req.userId!;
     const profileData: UserProfileDto = {
       first_name: req.body.first_name,
       last_name: req.body.last_name,
       phone: req.body.phone,
     };
 
-    const user = await updateUserProfile(userId, profileData, jwt);
+    // User ID is now extracted from JWT in the service
+    const user = await updateUserProfile(profileData, jwt);
 
     res.status(200).json({
       status: "success",
@@ -76,11 +86,15 @@ export const getAddresses = async (
   next: NextFunction
 ) => {
   try {
-    console.log("getAddresses req", req);
-    const userId = req.userId!;
     const jwt = req.jwt;
+    
+    // Ensure JWT exists
+    if (!jwt) {
+      return next(new AppError("Authentication required", 401));
+    }
 
-    const addresses = await getUserAddresses(userId, jwt);
+    // User ID is now extracted from JWT in the service
+    const addresses = await getUserAddresses(jwt);
 
     res.status(200).json({
       status: "success",
@@ -104,8 +118,13 @@ export const addAddress = async (
       return next(new AppError("Validation error", 400));
     }
 
-    const userId = req.userId!;
-    const jwt: string | undefined = req.jwt;
+    const jwt = req.jwt;
+    
+    // Ensure JWT exists
+    if (!jwt) {
+      return next(new AppError("Authentication required", 401));
+    }
+    
     const addressData: AddressDto = {
       name: req.body.name,
       address_line1: req.body.address_line1,
@@ -117,7 +136,8 @@ export const addAddress = async (
       is_default: req.body.is_default,
     };
 
-    const address = await addUserAddress(userId, addressData, jwt);
+    // User ID is now extracted from JWT in the service
+    const address = await addUserAddress(addressData, jwt);
 
     res.status(201).json({
       status: "success",
@@ -141,13 +161,18 @@ export const updateAddress = async (
       return next(new AppError("Validation error", 400));
     }
 
-    const userId = req.userId!;
     const jwt = req.jwt;
+    
+    // Ensure JWT exists
+    if (!jwt) {
+      return next(new AppError("Authentication required", 401));
+    }
+    
     const addressId = req.params.id;
     const addressData: Partial<AddressDto> = req.body;
 
+    // User ID is now extracted from JWT in the service
     const address = await updateUserAddress(
-      userId,
       addressId,
       addressData,
       jwt
@@ -169,11 +194,17 @@ export const removeAddress = async (
   next: NextFunction
 ) => {
   try {
-    const userId = req.userId!;
     const jwt = req.jwt;
+    
+    // Ensure JWT exists
+    if (!jwt) {
+      return next(new AppError("Authentication required", 401));
+    }
+    
     const addressId = req.params.id;
 
-    await deleteUserAddress(userId, addressId, jwt);
+    // User ID is now extracted from JWT in the service
+    await deleteUserAddress(addressId, jwt);
 
     res.status(204).send();
   } catch (error) {

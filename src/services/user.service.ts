@@ -6,6 +6,7 @@ import {
 } from "../config/supabase";
 import { AppError } from "../utils/appError";
 import { logger } from "../utils/logger";
+import { getUserFromToken } from "@/utils/auth-helper";
 
 // Interface for user profile data
 export interface UserProfileDto {
@@ -27,9 +28,12 @@ export interface AddressDto {
 }
 
 // Get user profile
-export const getUserProfile = async (userId: string, jwt?: string) => {
+export const getUserProfile = async (jwt: string) => {
   try {
-    const client = jwt ? createUserClient(jwt) : supabaseClient;
+    // Extract user ID from JWT
+    const { userId } = getUserFromToken(jwt);
+    
+    const client = createUserClient(jwt);
     const { data: user, error } = await client
       .from("user_profiles")
       .select("id, email, first_name, last_name, phone, role, created_at")
@@ -46,20 +50,21 @@ export const getUserProfile = async (userId: string, jwt?: string) => {
     if (error instanceof AppError) {
       throw error;
     }
-    logger.error(`Unexpected error in getUserProfile for ${userId}:`, error);
+    logger.error(`Unexpected error in getUserProfile:`, error);
     throw new AppError("Failed to get user profile", 500);
   }
 };
 
 // Update user profile
 export const updateUserProfile = async (
-  userId: string,
   profileData: UserProfileDto,
-  jwt?: string
+  jwt: string
 ) => {
   try {
-
-    const client = jwt ? createUserClient(jwt) : supabaseClient;
+    // Extract user ID from JWT
+    const { userId } = getUserFromToken(jwt);
+    
+    const client = createUserClient(jwt);
 
     const { data: user, error } = await client
       .from("user_profiles")
@@ -85,15 +90,18 @@ export const updateUserProfile = async (
     if (error instanceof AppError) {
       throw error;
     }
-    logger.error(`Unexpected error in updateUserProfile for ${userId}:`, error);
+    logger.error(`Unexpected error in updateUserProfile:`, error);
     throw new AppError("Failed to update user profile", 500);
   }
 };
 
 // Get user addresses
-export const getUserAddresses = async (userId: string, jwt?: string) => {
+export const getUserAddresses = async (jwt: string) => {
   try {
-    const client = jwt ? createUserClient(jwt) : supabaseClient;
+    // Extract user ID from JWT
+    const { userId } = getUserFromToken(jwt);
+
+    const client = createUserClient(jwt);
 
     const { data: addresses, error } = await client
       .from("addresses")
@@ -112,20 +120,21 @@ export const getUserAddresses = async (userId: string, jwt?: string) => {
     if (error instanceof AppError) {
       throw error;
     }
-    logger.error(`Unexpected error in getUserAddresses for ${userId}:`, error);
+    logger.error(`Unexpected error in getUserAddresses:`, error);
     throw new AppError("Failed to get addresses", 500);
   }
 };
 
 // Add a new address
 export const addUserAddress = async (
-  userId: string,
   addressData: AddressDto,
-  jwt?: string
+  jwt: string
 ) => {
   try {
+    // Extract user ID from JWT
+    const { userId } = getUserFromToken(jwt);
 
-    const client = jwt ? createUserClient(jwt) : supabaseClient;
+    const client = createUserClient(jwt);
     // If this is the first address or is set as default, update other addresses
     if (addressData.is_default) {
       const { error: updateError } = await client
@@ -190,22 +199,23 @@ export const addUserAddress = async (
     if (error instanceof AppError) {
       throw error;
     }
-    logger.error(`Unexpected error in addUserAddress for ${userId}:`, error);
+    logger.error(`Unexpected error in addUserAddress:`, error);
     throw new AppError("Failed to add address", 500);
   }
 };
 
 // Update an address
 export const updateUserAddress = async (
-  userId: string,
   addressId: string,
   addressData: Partial<AddressDto>,
-  jwt?: string
+  jwt: string
 ) => {
   try {
+    // Extract user ID from JWT
+    const { userId } = getUserFromToken(jwt);
 
     // Check if address exists and belongs to user
-    const client = jwt ? createUserClient(jwt) : supabaseClient;
+    const client = createUserClient(jwt);
 
     const { data: existingAddress, error: checkError } = await client
       .from("addresses")
@@ -272,7 +282,7 @@ export const updateUserAddress = async (
       throw error;
     }
     logger.error(
-      `Unexpected error in updateUserAddress for ${userId}, ${addressId}:`,
+      `Unexpected error in updateUserAddress for address ${addressId}:`,
       error
     );
     throw new AppError("Failed to update address", 500);
@@ -281,14 +291,15 @@ export const updateUserAddress = async (
 
 // Delete an address
 export const deleteUserAddress = async (
-  userId: string,
   addressId: string,
-  jwt?: string
+  jwt: string
 ) => {
   try {
+    // Extract user ID from JWT
+    const { userId } = getUserFromToken(jwt);
 
     // Check if address exists and belongs to user
-    const client = jwt ? createUserClient(jwt) : supabaseClient;
+    const client = createUserClient(jwt);
 
     const { data: existingAddress, error: checkError } = await client
       .from("addresses")
@@ -354,7 +365,7 @@ export const deleteUserAddress = async (
       throw error;
     }
     logger.error(
-      `Unexpected error in deleteUserAddress for ${userId}, ${addressId}:`,
+      `Unexpected error in deleteUserAddress for address ${addressId}:`,
       error
     );
     throw new AppError("Failed to delete address", 500);
